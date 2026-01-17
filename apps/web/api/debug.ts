@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAuth } from './_lib/auth';
-import { supabase } from '@teammae/db';
+import { getSupabase } from '@teammae/db';
 
 export default async function handler(
   req: VercelRequest,
@@ -10,17 +10,17 @@ export default async function handler(
     const userId = await verifyAuth(req);
 
     // Check if user exists in public.users
-    const { data: publicUser, error: publicUserError } = await supabase
+    const { data: publicUser, error: publicUserError } = await getSupabase()
       .from('users')
       .select('*')
       .eq('id', userId)
       .single();
 
     // Check if user exists in auth.users
-    const { data: authSession } = await supabase.auth.getSession();
+    const { data: authSession } = await getSupabase().auth.getSession();
 
     // Try to list projects
-    const { data: projects, error: projectsError } = await supabase
+    const { data: projects, error: projectsError } = await getSupabase()
       .from('projects')
       .select('*')
       .eq('user_id', userId);

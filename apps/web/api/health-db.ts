@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from '@teammae/db';
+import { getSupabase } from '@teammae/db';
 
 export default async function handler(
   req: VercelRequest,
@@ -7,7 +7,7 @@ export default async function handler(
 ) {
   try {
     // Test database connection by querying templates (public table)
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('templates')
       .select('id')
       .limit(1);

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 import { verifyAuth } from '../../_lib/auth';
-import { projectsClient, filesClient } from '../../_lib/db';
 import {
   successResponse,
   errorResponse,
@@ -17,6 +17,11 @@ export default async function handler(
     // Verify authentication
     const userId = await verifyAuth(req);
 
+    // Create Supabase client inline
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
     // Extract project ID from query
     const { id } = req.query;
     const projectId = Array.isArray(id) ? id[0] : id;
@@ -26,7 +31,13 @@ export default async function handler(
     }
 
     // Verify project exists and user owns it
-    const project = await projectsClient.get(projectId);
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .single();
+
+    if (projectError) throw projectError;
 
     if (!project) {
       return notFoundResponse(res, 'Project');
@@ -38,8 +49,14 @@ export default async function handler(
 
     if (req.method === 'GET') {
       // Get all files for project
-      const files = await filesClient.list(projectId);
-      return successResponse(res, { files });
+      const { data: files, error } = await supabase
+        .from('files')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('path', { ascending: true });
+
+      if (error) throw error;
+      return successResponse(res, { files: files || [] });
     }
 
     if (req.method === 'PUT' || req.method === 'POST') {
@@ -60,9 +77,26 @@ export default async function handler(
         }
       }
 
-      const savedFiles = await filesClient.save(projectId, files);
+      // Save files (upsert)
+      const filesToSave = files.map((f: any) => ({
+        project_id: projectId,
+        path: f.path,
+        content: f.content,
+        file_type: f.file_type || 'other',
+        size_bytes: f.content.length,
+        checksum: '',
+        version: 1,
+      }));
 
-      return successResponse(res, { files: savedFiles });
+      const { data: savedFiles, error } = await supabase
+        .from('files')
+        .upsert(filesToSave, {
+          onConflict: 'project_id,path',
+        })
+        .select();
+
+      if (error) throw error;
+      return successResponse(res, { files: savedFiles || [] });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

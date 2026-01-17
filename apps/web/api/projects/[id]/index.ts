@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 import { verifyAuth } from '../../_lib/auth';
-import { projectsClient } from '../../_lib/db';
 import {
   successResponse,
   errorResponse,
@@ -16,6 +16,11 @@ export default async function handler(
     // Verify authentication
     const userId = await verifyAuth(req);
 
+    // Create Supabase client inline
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
     // Extract project ID from query
     const { id } = req.query;
     const projectId = Array.isArray(id) ? id[0] : id;
@@ -26,7 +31,13 @@ export default async function handler(
 
     if (req.method === 'GET') {
       // Get single project
-      const project = await projectsClient.get(projectId);
+      const { data: project, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (error) throw error;
 
       if (!project) {
         return notFoundResponse(res, 'Project');
@@ -41,8 +52,14 @@ export default async function handler(
     }
 
     if (req.method === 'PUT' || req.method === 'PATCH') {
-      // Update project
-      const project = await projectsClient.get(projectId);
+      // Get project first to verify ownership
+      const { data: project, error: getError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (getError) throw getError;
 
       if (!project) {
         return notFoundResponse(res, 'Project');
@@ -53,15 +70,28 @@ export default async function handler(
         return unauthorizedResponse(res);
       }
 
+      // Update project
       const updates = req.body;
-      const updatedProject = await projectsClient.update(projectId, updates);
+      const { data: updatedProject, error: updateError } = await supabase
+        .from('projects')
+        .update(updates)
+        .eq('id', projectId)
+        .select()
+        .single();
 
+      if (updateError) throw updateError;
       return successResponse(res, { project: updatedProject });
     }
 
     if (req.method === 'DELETE') {
-      // Delete project
-      const project = await projectsClient.get(projectId);
+      // Get project first to verify ownership
+      const { data: project, error: getError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+
+      if (getError) throw getError;
 
       if (!project) {
         return notFoundResponse(res, 'Project');
@@ -72,8 +102,13 @@ export default async function handler(
         return unauthorizedResponse(res);
       }
 
-      await projectsClient.delete(projectId);
+      // Delete project
+      const { error: deleteError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
 
+      if (deleteError) throw deleteError;
       return successResponse(res, { success: true });
     }
 

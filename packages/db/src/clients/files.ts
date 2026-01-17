@@ -109,4 +109,13 @@ export class FilesClient {
   }
 }
 
-export const filesClient = new FilesClient();
+// Lazy initialization to avoid calling getSupabase() at module load time
+let _filesClient: FilesClient | null = null;
+export const filesClient = new Proxy({} as FilesClient, {
+  get(_target, prop) {
+    if (!_filesClient) {
+      _filesClient = new FilesClient();
+    }
+    return (_filesClient as any)[prop];
+  }
+});

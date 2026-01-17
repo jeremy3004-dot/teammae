@@ -1,4 +1,4 @@
-import { supabase } from '../index';
+import { supabase } from '../supabase';
 import type { Build, BuildLog, BuildArtifact, BuildStatus } from '@teammae/types';
 
 export class BuildsClient {

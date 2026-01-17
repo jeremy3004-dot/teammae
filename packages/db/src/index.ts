@@ -1,32 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
+// Re-export supabase client from separate module to avoid circular deps
+export { supabase, getSupabase } from './supabase';
 
-// Lazy initialization to avoid errors when env vars not set
-let _supabase: any = null;
-
-export function getSupabase() {
-  if (_supabase) return _supabase;
-
-  const supabaseUrl = process.env.SUPABASE_URL || '';
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables: SUPABASE_URL and SUPABASE_ANON_KEY');
-  }
-
-  _supabase = createClient<any>(supabaseUrl, supabaseAnonKey);
-  return _supabase;
-}
-
-// Export for compatibility (will throw if not configured)
-export const supabase = new Proxy({} as any, {
-  get(_target, prop) {
-    return getSupabase()[prop];
-  },
-});
-
+// Export types
 export * from './types';
-export * from './clients/projects';
-export * from './clients/files';
-export * from './clients/builds';
-export * from './clients/templates';
+
+// Export clients - explicit named exports to ensure they're visible
+export { ProjectsClient, projectsClient } from './clients/projects';
+export { FilesClient, filesClient } from './clients/files';
+export { BuildsClient, buildsClient } from './clients/builds';
+export { TemplatesClient, templatesClient } from './clients/templates';
+
+// Export helpers
 export * from './helpers';

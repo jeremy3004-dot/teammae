@@ -1,4 +1,4 @@
-import { supabase } from '../index';
+import { supabase } from '../supabase';
 import type { Template, ProjectType } from '@teammae/types';
 
 export class TemplatesClient {

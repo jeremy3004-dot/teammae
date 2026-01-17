@@ -1,4 +1,4 @@
-import { supabase } from '../index';
+import { supabase } from '../supabase';
 import type { Project, CreateProjectRequest } from '@teammae/types';
 import crypto from 'crypto';
 

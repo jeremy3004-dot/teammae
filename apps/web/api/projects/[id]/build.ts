@@ -249,7 +249,7 @@ export default async function handler(
  * Generate code using Claude API with strict JSON output
  */
 async function generateCodeWithClaude(prompt: string): Promise<ClaudeResponse> {
-  console.log('[build] Step 10: Starting Claude API call');
+  console.log('[build] Step 10: Starting Claude API call with claude-sonnet-4-20250514');
   const startTime = Date.now();
 
   const systemPrompt = `You are an expert code generator for Vite + React + TypeScript + Tailwind CSS applications.

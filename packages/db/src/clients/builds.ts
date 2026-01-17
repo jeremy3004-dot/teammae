@@ -138,13 +138,4 @@ export class BuildsClient {
   }
 }
 
-// Lazy initialization to avoid calling getSupabase() at module load time
-let _buildsClient: BuildsClient | null = null;
-export const buildsClient = new Proxy({} as BuildsClient, {
-  get(_target, prop) {
-    if (!_buildsClient) {
-      _buildsClient = new BuildsClient();
-    }
-    return (_buildsClient as any)[prop];
-  }
-});
+export const buildsClient = new BuildsClient();

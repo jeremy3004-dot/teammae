@@ -79,13 +79,4 @@ export class ProjectsClient {
   }
 }
 
-// Lazy initialization to avoid calling getSupabase() at module load time
-let _projectsClient: ProjectsClient | null = null;
-export const projectsClient = new Proxy({} as ProjectsClient, {
-  get(_target, prop) {
-    if (!_projectsClient) {
-      _projectsClient = new ProjectsClient();
-    }
-    return (_projectsClient as any)[prop];
-  }
-});
+export const projectsClient = new ProjectsClient();

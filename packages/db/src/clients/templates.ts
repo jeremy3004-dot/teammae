@@ -31,13 +31,4 @@ export class TemplatesClient {
   }
 }
 
-// Lazy initialization to avoid calling getSupabase() at module load time
-let _templatesClient: TemplatesClient | null = null;
-export const templatesClient = new Proxy({} as TemplatesClient, {
-  get(_target, prop) {
-    if (!_templatesClient) {
-      _templatesClient = new TemplatesClient();
-    }
-    return (_templatesClient as any)[prop];
-  }
-});
+export const templatesClient = new TemplatesClient();

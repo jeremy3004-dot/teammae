@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { safeHandler } from './_lib/safe-handler';
-import { createSupabaseServer } from './_lib/supabase';
+import { safeHandler } from './_lib/safe-handler.js';
+import { createSupabaseServer } from './_lib/supabase.js';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
   // Extract auth token

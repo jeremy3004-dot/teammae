@@ -1,4 +1,4 @@
-import { safeHandler } from './_lib/safe-handler';
+import { safeHandler } from './_lib/safe-handler.js';
 
 async function handler(req: any, res: any) {
   return res.status(200).json({

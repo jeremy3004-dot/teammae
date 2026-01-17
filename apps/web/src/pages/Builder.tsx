@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { PreviewPane } from '../components/PreviewPane';
 import { LogsDrawer } from '../components/LogsDrawer';
-import { ProjectSelector } from '../components/ProjectSelector';
-import { BuildHistory } from '../components/BuildHistory';
 import { supabase } from '../lib/supabase';
 
 interface Message {
@@ -17,22 +16,13 @@ interface BuildLog {
   timestamp: Date;
 }
 
-interface DemoResult {
-  prompt: string;
-  status: 'pass' | 'fail';
-  reason?: string;
-}
-
-interface BuildPlanPreview {
-  type: string;
-  pages: string[];
-  layout: string[];
-  components: string[];
-  styleProfile: string;
-  explanation: string;
+interface BuildStep {
+  label: string;
+  status: 'pending' | 'active' | 'complete';
 }
 
 export function Builder() {
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isBuilding, setIsBuilding] = useState(false);
@@ -40,11 +30,7 @@ export function Builder() {
   const [logs, setLogs] = useState<BuildLog[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [isDemoRunning, setIsDemoRunning] = useState(false);
-  const [demoResults, setDemoResults] = useState<DemoResult[]>([]);
-  const [isBeautyDemoRunning, setIsBeautyDemoRunning] = useState(false);
-  const [beautyDemoResults, setBeautyDemoResults] = useState<DemoResult[]>([]);
-  const [buildPlanPreview, setBuildPlanPreview] = useState<BuildPlanPreview | null>(null);
+  const [buildSteps, setBuildSteps] = useState<BuildStep[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -54,6 +40,22 @@ export function Builder() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Handle initial prompt from Home page
+  useEffect(() => {
+    const state = location.state as { initialPrompt?: string; projectId?: string } | null;
+    if (state?.initialPrompt) {
+      setInput(state.initialPrompt);
+      // Auto-submit after a brief delay
+      setTimeout(() => {
+        const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+        handleSubmitWithPrompt(state.initialPrompt!, fakeEvent);
+      }, 100);
+    }
+    if (state?.projectId) {
+      setCurrentProjectId(state.projectId);
+    }
+  }, [location.state]);
 
   const addLog = (level: BuildLog['level'], message: string) => {
     setLogs((prev) => [...prev, { level, message, timestamp: new Date() }]);
@@ -74,245 +76,48 @@ export function Builder() {
     return headers;
   };
 
-  const checkPreviewIntegrity = (html: string): { valid: boolean; issues: string[] } => {
-    const issues: string[] = [];
-
-    // Check for corruption patterns
-    if (/href=(?!["'])/.test(html)) {
-      issues.push('Detected unquoted href attributes');
-    }
-    if (/class=(?!["'])/.test(html)) {
-      issues.push('Detected unquoted class attributes');
-    }
-    if (/>\s*\)\s*\}\s*\)/.test(html)) {
-      issues.push('Detected malformed JSX closures');
-    }
-    if (/<[a-z]+\s+[^>]*(?:className|href|src)=[^"'][^>\s]*/i.test(html)) {
-      issues.push('Detected unquoted React props');
-    }
-
-    return { valid: issues.length === 0, issues };
-  };
-
-  const runDemo = async () => {
-    setIsDemoRunning(true);
-    setDemoResults([]);
-    setShowLogs(true);
-
-    const demoPrompts = [
-      'Build a simple Hello World app with a centered greeting',
-      'Build a landing page with hero section, features grid, and call-to-action',
-      'Build a todo list app with add, complete, and delete functionality',
+  const simulateBuildSteps = () => {
+    const steps: BuildStep[] = [
+      { label: 'Analyzing requirements', status: 'active' },
+      { label: 'Generating React components', status: 'pending' },
+      { label: 'Applying styles', status: 'pending' },
+      { label: 'Compiling preview', status: 'pending' },
     ];
+    setBuildSteps(steps);
 
-    const results: DemoResult[] = [];
-
-    for (const prompt of demoPrompts) {
-      addLog('info', `🧪 Demo: ${prompt}`);
-
-      try {
-        const headers = await getAuthHeaders();
-        const response = await fetch('/api/mae/build', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            projectId: `demo-${Date.now()}`,
-            prompt,
-            existingFiles: [],
-          }),
-        });
-
-        if (!response.ok) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: `HTTP ${response.status}: ${response.statusText}`,
-          });
-          addLog('error', `Demo FAIL: ${response.statusText}`);
-          continue;
-        }
-
-        const result = await response.json();
-
-        if (!result.previewHtml) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: 'No preview HTML generated',
-          });
-          addLog('error', 'Demo FAIL: No preview HTML');
-          continue;
-        }
-
-        // Check integrity
-        const integrity = checkPreviewIntegrity(result.previewHtml);
-
-        if (!integrity.valid) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: `Preview integrity check failed: ${integrity.issues.join(', ')}`,
-          });
-          addLog('error', `Demo FAIL: ${integrity.issues.join(', ')}`);
-          continue;
-        }
-
-        // Check that files were saved
-        if (!result.savedCount || result.savedCount === 0) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: 'No files saved to database',
-          });
-          addLog('error', 'Demo FAIL: No files saved');
-          continue;
-        }
-
-        // All checks passed
-        results.push({
-          prompt,
-          status: 'pass',
-        });
-
-        addLog('info', `✅ Demo PASS: ${result.savedCount} files saved, preview valid`);
-        setPreviewHtml(result.previewHtml);
-
-        // Wait 1 second between demos
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      } catch (error) {
-        results.push({
-          prompt,
-          status: 'fail',
-          reason: error instanceof Error ? error.message : 'Unknown error',
-        });
-        addLog('error', `Demo FAIL: ${error instanceof Error ? error.message : 'Unknown'}`);
+    // Simulate step progression
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      currentStep++;
+      if (currentStep >= steps.length) {
+        clearInterval(interval);
+        return;
       }
-    }
+      setBuildSteps(prev => prev.map((step, i) => ({
+        ...step,
+        status: i < currentStep ? 'complete' : i === currentStep ? 'active' : 'pending'
+      })));
+    }, 1500);
 
-    setDemoResults(results);
-    setIsDemoRunning(false);
-
-    const passCount = results.filter((r) => r.status === 'pass').length;
-    addLog('info', `🎯 Demo complete: ${passCount}/${results.length} passed`);
+    return () => clearInterval(interval);
   };
 
-  const runBeautyDemo = async () => {
-    setIsBeautyDemoRunning(true);
-    setBeautyDemoResults([]);
-    setShowLogs(true);
-
-    const beautyPrompts = [
-      'Build a calorie tracker app with a friendly pig avatar, pink aesthetic',
-      'Build a modern dashboard for a SaaS product with sidebar navigation and stat cards',
-    ];
-
-    const results: DemoResult[] = [];
-
-    for (const prompt of beautyPrompts) {
-      addLog('info', `✨ Beauty Demo: ${prompt}`);
-
-      try {
-        const headers = await getAuthHeaders();
-        const response = await fetch('/api/mae/build', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            projectId: `beauty-demo-${Date.now()}`,
-            prompt,
-            existingFiles: [],
-          }),
-        });
-
-        if (!response.ok) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: `HTTP ${response.status}: ${response.statusText}`,
-          });
-          addLog('error', `Beauty Demo FAIL: ${response.statusText}`);
-          continue;
-        }
-
-        const result = await response.json();
-
-        // Check quality score
-        const qualityScore = result.meta?.qualityScore || 0;
-        const hasMultipleComponents = result.files?.filter((f: any) =>
-          f.path.startsWith('src/components/')
-        ).length >= 2;
-
-        if (!result.previewHtml) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: 'No preview HTML generated',
-          });
-          addLog('error', 'Beauty Demo FAIL: No preview HTML');
-          continue;
-        }
-
-        if (qualityScore < 70) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: `Quality score too low: ${qualityScore}/100`,
-          });
-          addLog('error', `Beauty Demo FAIL: Quality score ${qualityScore}/100`);
-          continue;
-        }
-
-        if (!hasMultipleComponents) {
-          results.push({
-            prompt,
-            status: 'fail',
-            reason: 'Insufficient component breakdown (expected 2+ components)',
-          });
-          addLog('error', 'Beauty Demo FAIL: Not enough components');
-          continue;
-        }
-
-        // All checks passed
-        results.push({
-          prompt,
-          status: 'pass',
-        });
-
-        addLog('info', `✅ Beauty Demo PASS: Quality ${qualityScore}/100, ${result.files?.length || 0} files, ${result.files?.filter((f: any) => f.path.startsWith('src/components/')).length} components`);
-        setPreviewHtml(result.previewHtml);
-
-        // Wait 2 seconds between demos
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } catch (error) {
-        results.push({
-          prompt,
-          status: 'fail',
-          reason: error instanceof Error ? error.message : 'Unknown error',
-        });
-        addLog('error', `Beauty Demo FAIL: ${error instanceof Error ? error.message : 'Unknown'}`);
-      }
-    }
-
-    setBeautyDemoResults(results);
-    setIsBeautyDemoRunning(false);
-
-    const passCount = results.filter((r) => r.status === 'pass').length;
-    addLog('info', `✨ Beauty Demo complete: ${passCount}/${results.length} passed`);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitWithPrompt = async (promptText: string, e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isBuilding) return;
+    if (!promptText.trim() || isBuilding) return;
 
     const userMessage: Message = {
       role: 'user',
-      content: input.trim(),
+      content: promptText.trim(),
       timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsBuilding(true);
-    setBuildPlanPreview(null);
+
+    // Start build step simulation
+    const cleanupSteps = simulateBuildSteps();
 
     addLog('info', `Building: ${userMessage.content}`);
 
@@ -334,90 +139,14 @@ export function Builder() {
 
       const result = await response.json();
 
-      // Log brand resolution
-      if (result.meta?.brandName) {
-        const brandSource =
-          result.meta.brandSource === 'default'
-            ? 'TeamMAE Default'
-            : result.meta.brandSource === 'user-explicit'
-            ? 'User Selected'
-            : 'Detected from Prompt';
-        addLog('info', `Brand: ${result.meta.brandName} (${brandSource})`);
-        addLog('info', `Style: ${result.meta.styleProfile || 'dark-saas'}`);
-
-        if (result.meta.brandCompliant === false) {
-          addLog('warn', 'Brand compliance: FAILED');
-          if (result.meta.brandViolations && result.meta.brandViolations.length > 0) {
-            result.meta.brandViolations.forEach((violation: string) => {
-              addLog('warn', `Brand violation: ${violation}`);
-            });
-          }
-        } else {
-          addLog('info', 'Brand compliance: PASSED');
-        }
-      }
-
-      // Show build plan if available
-      if (result.meta?.buildPlan) {
-        const plan = result.meta.buildPlan;
-        setBuildPlanPreview({
-          type: plan.type,
-          pages: plan.pages || [],
-          layout: plan.layout || [],
-          components: plan.components || [],
-          styleProfile: plan.styleProfile || 'light-saas',
-          explanation: result.meta.planExplanation || '',
-        });
-        addLog('info', `Build Plan: ${plan.components.length} components planned`);
-      }
-
       addLog('info', `Received ${result.files?.length || 0} files`);
 
-      if (result.warnings && result.warnings.length > 0) {
-        result.warnings.forEach((warning: string) => {
-          addLog('warn', warning);
-        });
-      }
-
-      // Show build explanation if available
-      let assistantContent = result.summary || 'Build complete';
-      if (result.meta?.buildExplanation) {
-        assistantContent = result.meta.buildExplanation;
-      }
-
-      // Add brand information (MANDATORY)
-      if (result.meta?.brandName) {
-        const brandSource =
-          result.meta.brandSource === 'default'
-            ? 'TeamMAE Default'
-            : result.meta.brandSource === 'user-explicit'
-            ? 'User Selected'
-            : 'Detected from Prompt';
-
-        assistantContent += `\n\nBrand: ${result.meta.brandName} (${brandSource})`;
-        assistantContent += `\nStyle: ${result.meta.styleProfile || 'dark-saas'}`;
-
-        if (result.meta.brandCompliant === false) {
-          assistantContent += `\n⚠️ Brand compliance: FAILED`;
-          if (result.meta.brandViolations && result.meta.brandViolations.length > 0) {
-            assistantContent += `\nViolations: ${result.meta.brandViolations.join(', ')}`;
-          }
-        } else {
-          assistantContent += `\n✅ Brand compliance: PASSED`;
-        }
-      }
-
-      // Add quality score info
-      if (result.meta?.qualityScore !== undefined) {
-        assistantContent += `\n\nQuality Score: ${result.meta.qualityScore}/100`;
-        if (result.meta.attempts > 1) {
-          assistantContent += ` (${result.meta.attempts} attempts)`;
-        }
-      }
+      // Mark all steps complete
+      setBuildSteps(prev => prev.map(step => ({ ...step, status: 'complete' as const })));
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: assistantContent,
+        content: result.summary || 'Build complete! Your app is ready.',
         timestamp: new Date(),
       };
 
@@ -428,6 +157,8 @@ export function Builder() {
         addLog('info', 'Preview generated successfully');
       }
     } catch (error) {
+      cleanupSteps();
+      setBuildSteps([]);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       addLog('error', errorMessage);
 
@@ -443,6 +174,10 @@ export function Builder() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    return handleSubmitWithPrompt(input, e);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -450,261 +185,234 @@ export function Builder() {
     }
   };
 
-  const handleSelectProject = (projectId: string) => {
-    setCurrentProjectId(projectId);
-    addLog('info', `Switched to project ${projectId}`);
-  };
-
-  const handleNewProject = async () => {
-    if (!supabase) return;
-
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const projectName = prompt('Enter project name:');
-      if (!projectName) return;
-
-      // Create project directly via Supabase
-      const { data, error } = await supabase.from('projects').insert({
-        user_id: user.id,
-        name: projectName,
-        type: 'web',
-        description: 'Created from builder',
-      }).select().single();
-
-      if (error) throw error;
-
-      setCurrentProjectId(data.id);
-      addLog('info', `Created new project: ${projectName}`);
-    } catch (error) {
-      console.error('Error creating project:', error);
-      addLog('error', 'Failed to create project');
-    }
-  };
-
-  const handleSelectBuild = async (buildId: string) => {
-    if (!supabase) return;
-
-    try {
-      // Load build details and files
-      const { data: build, error: buildError } = await supabase
-        .from('builds')
-        .select('*')
-        .eq('id', buildId)
-        .single();
-
-      if (buildError) throw buildError;
-
-      addLog('info', `Loaded build: ${build.prompt}`);
-
-      // Load files for this build's project
-      // For now, we'll just log - full file restoration could be added
-      setMessages([
-        {
-          role: 'user',
-          content: build.prompt || 'Previous build',
-          timestamp: new Date(build.started_at),
-        },
-        {
-          role: 'assistant',
-          content: build.summary || 'Build completed',
-          timestamp: new Date(build.completed_at || build.started_at),
-        },
-      ]);
-    } catch (error) {
-      console.error('Error loading build:', error);
-      addLog('error', 'Failed to load build');
-    }
-  };
-
   return (
     <div className="flex h-[calc(100vh-73px)]">
       {/* Left Pane: Chat */}
       <div className="w-1/2 flex flex-col border-r border-[#2a2a3e] bg-[#0a0a0f]">
-        <ProjectSelector
-          currentProjectId={currentProjectId}
-          onSelectProject={handleSelectProject}
-          onNewProject={handleNewProject}
-        />
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* MAE Header */}
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#2a2a3e]">
+          <div className="relative">
+            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#2a2a3e] bg-[#12121a]">
+              <img
+                src="/images/mae-mascot.png"
+                alt="MAE"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = `
+                    <div class="w-full h-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center">
+                      <span class="text-lg font-bold text-white font-mono">M</span>
+                    </div>
+                  `;
+                }}
+              />
+            </div>
+            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0a0a0f]"></div>
+          </div>
+          <div>
+            <h2 className="font-mono font-semibold text-[#f0f0f5] text-sm">MAE</h2>
+            <p className="text-xs text-green-400">Ready</p>
+          </div>
+        </div>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 ? (
-            <div className="text-center text-[#a0a0b0] mt-8">
-              <p className="text-lg font-mono font-medium text-[#f0f0f5]">Start building with MAE</p>
-              <p className="text-sm mt-2">
-                Describe the app you want to create and MAE will build it for you
-              </p>
-              <div className="mt-6 text-left max-w-md mx-auto space-y-2">
-                <p className="text-xs font-mono font-semibold text-[#a0a0b0] uppercase tracking-wider">Try asking:</p>
-                <button
-                  onClick={() => setInput('Build a landing page with hero section and features')}
-                  className="block w-full text-left px-4 py-3 text-sm bg-[#12121a] hover:bg-[#1a1a24] border border-[#2a2a3e] hover:border-[#6366f1]/50 rounded-lg text-[#a0a0b0] hover:text-[#f0f0f5] transition-all"
-                >
-                  Build a landing page with hero section and features
-                </button>
-                <button
-                  onClick={() => setInput('Create a todo app with add, delete, and complete tasks')}
-                  className="block w-full text-left px-4 py-3 text-sm bg-[#12121a] hover:bg-[#1a1a24] border border-[#2a2a3e] hover:border-[#6366f1]/50 rounded-lg text-[#a0a0b0] hover:text-[#f0f0f5] transition-all"
-                >
-                  Create a todo app with add, delete, and complete tasks
-                </button>
-                <button
-                  onClick={() => setInput('Build a dashboard with stats cards and a chart')}
-                  className="block w-full text-left px-4 py-3 text-sm bg-[#12121a] hover:bg-[#1a1a24] border border-[#2a2a3e] hover:border-[#6366f1]/50 rounded-lg text-[#a0a0b0] hover:text-[#f0f0f5] transition-all"
-                >
-                  Build a dashboard with stats cards and a chart
-                </button>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#2a2a3e] bg-[#12121a] shrink-0">
+                <img
+                  src="/images/mae-mascot.png"
+                  alt="MAE"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement!.innerHTML = `
+                      <div class="w-full h-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center">
+                        <span class="text-sm font-bold text-white font-mono">M</span>
+                      </div>
+                    `;
+                  }}
+                />
+              </div>
+              <div className="bg-[#12121a] border border-[#2a2a3e] rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
+                <p className="text-sm text-[#a0a0b0]">
+                  Hey! I'm MAE, your AI engineer. Tell me what you want to build and I'll create it for you.
+                </p>
               </div>
             </div>
           ) : (
             messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex items-start gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
               >
+                {msg.role === 'assistant' ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-[#2a2a3e] bg-[#12121a] shrink-0">
+                    <img
+                      src="/images/mae-mascot.png"
+                      alt="MAE"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.parentElement!.innerHTML = `
+                          <div class="w-full h-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center">
+                            <span class="text-sm font-bold text-white font-mono">M</span>
+                          </div>
+                        `;
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-white">Y</span>
+                  </div>
+                )}
                 <div
-                  className={`max-w-[80%] rounded-xl px-4 py-3 ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                     msg.role === 'user'
-                      ? 'bg-gradient-to-r from-[#6366f1] to-[#7c3aed] text-white'
-                      : 'bg-[#12121a] border border-[#2a2a3e] text-[#f0f0f5]'
+                      ? 'bg-gradient-to-r from-[#6366f1] to-[#7c3aed] text-white rounded-tr-sm'
+                      : 'bg-[#12121a] border border-[#2a2a3e] text-[#f0f0f5] rounded-tl-sm'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  <p
-                    className={`text-xs mt-1 ${
-                      msg.role === 'user' ? 'text-white/60' : 'text-[#666]'
-                    }`}
-                  >
-                    {msg.timestamp.toLocaleTimeString()}
-                  </p>
                 </div>
               </div>
             ))
           )}
           {isBuilding && (
-            <div className="flex justify-start">
-              <div className="bg-[#12121a] border border-[#2a2a3e] rounded-xl px-4 py-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-[#6366f1] rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-[#6366f1] rounded-full animate-bounce" style={{animationDelay: '100ms'}}></div>
-                  <div className="w-2 h-2 bg-[#6366f1] rounded-full animate-bounce" style={{animationDelay: '200ms'}}></div>
-                  <span className="text-sm text-[#a0a0b0] ml-2">MAE is building...</span>
-                </div>
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-[#2a2a3e] bg-[#12121a] shrink-0">
+                <img
+                  src="/images/mae-mascot.png"
+                  alt="MAE"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement!.innerHTML = `
+                      <div class="w-full h-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center">
+                        <span class="text-sm font-bold text-white font-mono">M</span>
+                      </div>
+                    `;
+                  }}
+                />
               </div>
-            </div>
-          )}
-          {buildPlanPreview && (
-            <div className="flex justify-start">
-              <div className="max-w-[80%] bg-[#6366f1]/10 border border-[#6366f1]/30 rounded-xl px-4 py-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[#6366f1] font-mono font-semibold text-sm">Build Plan</span>
+              <div className="bg-[#12121a] border border-[#2a2a3e] rounded-2xl rounded-tl-sm px-4 py-3">
+                <div className="flex items-center gap-2 text-[#6366f1] mb-2">
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-sm font-medium">Building...</span>
                 </div>
-                <div className="text-xs text-[#a0a0b0] space-y-1">
-                  <div><span className="font-medium text-[#f0f0f5]">Type:</span> {buildPlanPreview.type}</div>
-                  <div><span className="font-medium text-[#f0f0f5]">Style:</span> {buildPlanPreview.styleProfile}</div>
-                  <div><span className="font-medium text-[#f0f0f5]">Components:</span> {buildPlanPreview.components.length} ({buildPlanPreview.components.slice(0, 3).join(', ')}...)</div>
-                  <div><span className="font-medium text-[#f0f0f5]">Layout:</span> {buildPlanPreview.layout.join(' → ')}</div>
-                </div>
-                <p className="text-xs text-[#666] mt-2 italic whitespace-pre-wrap">{buildPlanPreview.explanation}</p>
               </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        <BuildHistory projectId={currentProjectId} onSelectBuild={handleSelectBuild} />
-
         {/* Input Area */}
         <div className="border-t border-[#2a2a3e] p-4 bg-[#12121a]">
-          <form onSubmit={handleSubmit} className="flex flex-col space-y-3">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Describe what you want to build..."
-              className="w-full px-4 py-3 bg-[#1a1a24] border border-[#2a2a3e] rounded-xl text-[#f0f0f5] placeholder-[#555] focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent resize-none transition-all"
-              rows={3}
-              disabled={isBuilding}
-            />
-            <div className="flex items-center justify-between">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLogs(!showLogs)}
-                  className="px-3 py-1.5 text-xs font-mono text-[#a0a0b0] hover:text-[#f0f0f5] hover:bg-[#1a1a24] rounded-lg transition-colors"
-                >
-                  {showLogs ? 'Hide' : 'Show'} Logs ({logs.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={runDemo}
-                  disabled={isDemoRunning || isBuilding || isBeautyDemoRunning}
-                  className="px-3 py-1.5 text-xs font-mono bg-[#7c3aed] text-white hover:bg-[#7c3aed]/80 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed rounded-lg font-medium transition-all"
-                >
-                  {isDemoRunning ? 'Running...' : 'Demo'}
-                </button>
-                <button
-                  type="button"
-                  onClick={runBeautyDemo}
-                  disabled={isBeautyDemoRunning || isBuilding || isDemoRunning}
-                  className="px-3 py-1.5 text-xs font-mono bg-pink-600 text-white hover:bg-pink-600/80 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed rounded-lg font-medium transition-all"
-                >
-                  {isBeautyDemoRunning ? 'Running...' : 'Beauty'}
-                </button>
-              </div>
-              <button
-                type="submit"
-                disabled={!input.trim() || isBuilding || isDemoRunning}
-                className="px-5 py-2 bg-white text-[#0a0a0f] rounded-lg font-mono font-medium text-xs uppercase tracking-wider hover:bg-[#f0f0f5] hover:-translate-y-0.5 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed disabled:transform-none transition-all"
-              >
-                {isBuilding ? 'Building...' : 'Build'}
-              </button>
+          <form onSubmit={handleSubmit} className="flex items-end gap-3">
+            <div className="flex-1 bg-[#1a1a24] border border-[#2a2a3e] rounded-xl focus-within:border-[#6366f1] transition-colors">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Tell MAE what to build or change..."
+                className="w-full px-4 py-3 bg-transparent text-[#f0f0f5] placeholder-[#555] focus:outline-none resize-none text-sm"
+                rows={2}
+                disabled={isBuilding}
+              />
             </div>
-            {demoResults.length > 0 && (
-              <div className="mt-2 p-3 bg-[#1a1a24] border border-[#2a2a3e] rounded-xl space-y-1">
-                <p className="text-xs font-mono font-semibold text-[#a0a0b0] mb-2 uppercase tracking-wider">Demo Results:</p>
-                {demoResults.map((result, idx) => (
-                  <div key={idx} className="text-xs flex items-start gap-2">
-                    <span className={result.status === 'pass' ? 'text-green-400' : 'text-red-400'}>
-                      {result.status === 'pass' ? '✓' : '✗'}
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[#f0f0f5]">{result.prompt}</p>
-                      {result.reason && (
-                        <p className="text-red-400 mt-0.5">{result.reason}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {beautyDemoResults.length > 0 && (
-              <div className="mt-2 p-3 bg-pink-500/10 border border-pink-500/30 rounded-xl space-y-1">
-                <p className="text-xs font-mono font-semibold text-pink-400 mb-2 uppercase tracking-wider">Beauty Demo Results:</p>
-                {beautyDemoResults.map((result, idx) => (
-                  <div key={idx} className="text-xs flex items-start gap-2">
-                    <span className={result.status === 'pass' ? 'text-green-400' : 'text-red-400'}>
-                      {result.status === 'pass' ? '✓' : '✗'}
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium text-[#f0f0f5]">{result.prompt}</p>
-                      {result.reason && (
-                        <p className="text-red-400 mt-0.5">{result.reason}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <button
+              type="submit"
+              disabled={!input.trim() || isBuilding}
+              className="px-6 py-3 bg-white text-[#0a0a0f] rounded-xl font-mono font-semibold text-sm hover:bg-[#f0f0f5] hover:-translate-y-0.5 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed disabled:transform-none transition-all"
+            >
+              {isBuilding ? (
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              )}
+            </button>
           </form>
         </div>
       </div>
 
       {/* Right Pane: Preview */}
-      <div className="w-1/2 bg-[#12121a]">
-        <PreviewPane html={previewHtml} />
+      <div className="w-1/2 bg-[#12121a] flex flex-col">
+        {isBuilding && buildSteps.length > 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-[#2a2a3e] mb-6 animate-pulse">
+              <img
+                src="/images/mae-mascot.png"
+                alt="MAE"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = `
+                    <div class="w-full h-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center">
+                      <span class="text-2xl font-bold text-white font-mono">M</span>
+                    </div>
+                  `;
+                }}
+              />
+            </div>
+            <h3 className="text-xl font-mono font-semibold text-[#f0f0f5] mb-8">Building...</h3>
+            <div className="space-y-3 w-full max-w-sm">
+              {buildSteps.map((step, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                    step.status === 'complete' ? 'bg-green-500' :
+                    step.status === 'active' ? 'bg-[#6366f1]' :
+                    'bg-[#2a2a3e]'
+                  }`}>
+                    {step.status === 'complete' ? (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : step.status === 'active' ? (
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    ) : (
+                      <div className="w-2 h-2 bg-[#555] rounded-full"></div>
+                    )}
+                  </div>
+                  <span className={`text-sm ${
+                    step.status === 'complete' ? 'text-green-400' :
+                    step.status === 'active' ? 'text-[#f0f0f5]' :
+                    'text-[#555]'
+                  }`}>
+                    {step.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : previewHtml ? (
+          <PreviewPane html={previewHtml} />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-20 h-20 rounded-full bg-[#1a1a24] flex items-center justify-center mb-6">
+              <svg className="w-10 h-10 text-[#2a2a3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-mono font-semibold text-[#f0f0f5] mb-2">Preview</h3>
+            <p className="text-sm text-[#555] max-w-xs">
+              Your app preview will appear here once MAE starts building
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Logs Drawer */}

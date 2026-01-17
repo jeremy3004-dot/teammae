@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Lazy initialization to avoid errors when env vars not set
+// Cached client instance
 let _supabase: any = null;
 
+// Get or create the Supabase client
 export function getSupabase() {
   if (_supabase) return _supabase;
 
@@ -14,10 +15,7 @@ export function getSupabase() {
     throw new Error('Missing Supabase environment variables: SUPABASE_URL and SUPABASE_ANON_KEY (or VITE_ prefixed versions)');
   }
 
-  _supabase = createClient<any>(supabaseUrl, supabaseAnonKey);
+  _supabase = createClient(supabaseUrl, supabaseAnonKey);
   return _supabase;
 }
 
-// Direct export - call getSupabase() when you need it instead of using a Proxy
-// This is safer for serverless environments
-export const supabase = getSupabase();

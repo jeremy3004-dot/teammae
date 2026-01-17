@@ -1,9 +1,9 @@
-import { supabase } from '../supabase';
+import { getSupabase } from '../supabase';
 import type { Project, CreateProjectRequest } from '@teammae/types';
 
 export class ProjectsClient {
   async create(userId: string, data: CreateProjectRequest): Promise<Project> {
-    const { data: project, error } = await supabase
+    const { data: project, error } = await getSupabase()
       .from('projects')
       .insert({
         user_id: userId,
@@ -21,7 +21,7 @@ export class ProjectsClient {
   }
 
   async get(projectId: string): Promise<Project | null> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('projects')
       .select('*')
       .eq('id', projectId)
@@ -32,18 +32,18 @@ export class ProjectsClient {
   }
 
   async list(userId: string): Promise<Project[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('projects')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false});
 
     if (error) throw error;
     return (data || []) as Project[];
   }
 
   async update(projectId: string, updates: Partial<Project>): Promise<Project> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('projects')
       .update(updates)
       .eq('id', projectId)
@@ -55,7 +55,7 @@ export class ProjectsClient {
   }
 
   async delete(projectId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('projects')
       .delete()
       .eq('id', projectId);

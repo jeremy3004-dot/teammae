@@ -7,16 +7,28 @@
 --   - 'exports' bucket: Source code exports for user download
 -- ============================================================================
 
--- Create storage buckets
+-- Create storage buckets (only if they don't exist)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('artifacts', 'artifacts', false, 524288000, ARRAY['application/octet-stream', 'application/vnd.android.package-archive', 'application/zip']), -- 500MB limit
   ('previews', 'previews', true, 52428800, ARRAY['application/zip', 'text/html', 'application/javascript', 'text/css']), -- 50MB limit
-  ('exports', 'exports', false, 104857600, ARRAY['application/zip']); -- 100MB limit
+  ('exports', 'exports', false, 104857600, ARRAY['application/zip']) -- 100MB limit
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
 -- Storage RLS Policies
 -- ============================================================================
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view own artifacts" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own artifacts" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own artifacts" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can view previews" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own previews" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own previews" ON storage.objects;
+DROP POLICY IF EXISTS "Users can view own exports" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload own exports" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete own exports" ON storage.objects;
 
 -- ARTIFACTS: Users can only access their own build artifacts
 CREATE POLICY "Users can view own artifacts" ON storage.objects

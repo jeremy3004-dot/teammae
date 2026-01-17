@@ -12,32 +12,32 @@ function AuthenticatedApp() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-[#0a0a0f]">
+      <header className="border-b border-[#2a2a3e] bg-[#0a0a0f]/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">TeamMAE.ai</h1>
-              <p className="text-sm text-gray-600">AI-Powered App Builder</p>
+              <h1 className="font-mono text-xl font-bold text-[#f0f0f5] tracking-wider uppercase">MAE</h1>
+              <p className="text-xs text-[#a0a0b0]">Master AI Engineer</p>
             </div>
-            <div className="flex items-center gap-4">
-              <nav className="flex gap-4">
+            <div className="flex items-center gap-6">
+              <nav className="flex gap-2">
                 <Link
                   to="/"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  className={`px-4 py-2 rounded-lg text-xs font-mono font-medium uppercase tracking-wider transition-all ${
                     location.pathname === '/'
-                      ? 'bg-gray-900 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-white text-[#0a0a0f]'
+                      : 'text-[#a0a0b0] hover:text-[#f0f0f5] hover:bg-[#1a1a24]'
                   }`}
                 >
                   Projects
                 </Link>
                 <Link
                   to="/builder"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  className={`px-4 py-2 rounded-lg text-xs font-mono font-medium uppercase tracking-wider transition-all ${
                     location.pathname === '/builder'
-                      ? 'bg-gray-900 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-white text-[#0a0a0f]'
+                      : 'text-[#a0a0b0] hover:text-[#f0f0f5] hover:bg-[#1a1a24]'
                   }`}
                 >
                   Builder

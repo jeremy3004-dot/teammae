@@ -521,9 +521,9 @@ export function Builder() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-88px)]">
+    <div className="flex h-[calc(100vh-73px)]">
       {/* Left Pane: Chat */}
-      <div className="w-1/2 flex flex-col border-r border-gray-200 bg-white">
+      <div className="w-1/2 flex flex-col border-r border-[#2a2a3e] bg-[#0a0a0f]">
         <ProjectSelector
           currentProjectId={currentProjectId}
           onSelectProject={handleSelectProject}
@@ -531,28 +531,28 @@ export function Builder() {
         />
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
-            <div className="text-center text-gray-500 mt-8">
-              <p className="text-lg font-medium">Start building with MAE</p>
+            <div className="text-center text-[#a0a0b0] mt-8">
+              <p className="text-lg font-mono font-medium text-[#f0f0f5]">Start building with MAE</p>
               <p className="text-sm mt-2">
                 Describe the app you want to create and MAE will build it for you
               </p>
               <div className="mt-6 text-left max-w-md mx-auto space-y-2">
-                <p className="text-xs font-semibold text-gray-700">Try asking:</p>
+                <p className="text-xs font-mono font-semibold text-[#a0a0b0] uppercase tracking-wider">Try asking:</p>
                 <button
                   onClick={() => setInput('Build a landing page with hero section and features')}
-                  className="block w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-md"
+                  className="block w-full text-left px-4 py-3 text-sm bg-[#12121a] hover:bg-[#1a1a24] border border-[#2a2a3e] hover:border-[#6366f1]/50 rounded-lg text-[#a0a0b0] hover:text-[#f0f0f5] transition-all"
                 >
                   Build a landing page with hero section and features
                 </button>
                 <button
                   onClick={() => setInput('Create a todo app with add, delete, and complete tasks')}
-                  className="block w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-md"
+                  className="block w-full text-left px-4 py-3 text-sm bg-[#12121a] hover:bg-[#1a1a24] border border-[#2a2a3e] hover:border-[#6366f1]/50 rounded-lg text-[#a0a0b0] hover:text-[#f0f0f5] transition-all"
                 >
                   Create a todo app with add, delete, and complete tasks
                 </button>
                 <button
                   onClick={() => setInput('Build a dashboard with stats cards and a chart')}
-                  className="block w-full text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded-md"
+                  className="block w-full text-left px-4 py-3 text-sm bg-[#12121a] hover:bg-[#1a1a24] border border-[#2a2a3e] hover:border-[#6366f1]/50 rounded-lg text-[#a0a0b0] hover:text-[#f0f0f5] transition-all"
                 >
                   Build a dashboard with stats cards and a chart
                 </button>
@@ -565,16 +565,16 @@ export function Builder() {
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                  className={`max-w-[80%] rounded-xl px-4 py-3 ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                      ? 'bg-gradient-to-r from-[#6366f1] to-[#7c3aed] text-white'
+                      : 'bg-[#12121a] border border-[#2a2a3e] text-[#f0f0f5]'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   <p
                     className={`text-xs mt-1 ${
-                      msg.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                      msg.role === 'user' ? 'text-white/60' : 'text-[#666]'
                     }`}
                   >
                     {msg.timestamp.toLocaleTimeString()}
@@ -585,29 +585,29 @@ export function Builder() {
           )}
           {isBuilding && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg px-4 py-2">
+              <div className="bg-[#12121a] border border-[#2a2a3e] rounded-xl px-4 py-3">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
-                  <span className="text-sm text-gray-600 ml-2">MAE is building...</span>
+                  <div className="w-2 h-2 bg-[#6366f1] rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-[#6366f1] rounded-full animate-bounce" style={{animationDelay: '100ms'}}></div>
+                  <div className="w-2 h-2 bg-[#6366f1] rounded-full animate-bounce" style={{animationDelay: '200ms'}}></div>
+                  <span className="text-sm text-[#a0a0b0] ml-2">MAE is building...</span>
                 </div>
               </div>
             </div>
           )}
           {buildPlanPreview && (
             <div className="flex justify-start">
-              <div className="max-w-[80%] bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <div className="max-w-[80%] bg-[#6366f1]/10 border border-[#6366f1]/30 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-blue-600 font-semibold text-sm">📋 Build Plan</span>
+                  <span className="text-[#6366f1] font-mono font-semibold text-sm">Build Plan</span>
                 </div>
-                <div className="text-xs text-gray-700 space-y-1">
-                  <div><span className="font-medium">Type:</span> {buildPlanPreview.type}</div>
-                  <div><span className="font-medium">Style:</span> {buildPlanPreview.styleProfile}</div>
-                  <div><span className="font-medium">Components:</span> {buildPlanPreview.components.length} ({buildPlanPreview.components.slice(0, 3).join(', ')}...)</div>
-                  <div><span className="font-medium">Layout:</span> {buildPlanPreview.layout.join(' → ')}</div>
+                <div className="text-xs text-[#a0a0b0] space-y-1">
+                  <div><span className="font-medium text-[#f0f0f5]">Type:</span> {buildPlanPreview.type}</div>
+                  <div><span className="font-medium text-[#f0f0f5]">Style:</span> {buildPlanPreview.styleProfile}</div>
+                  <div><span className="font-medium text-[#f0f0f5]">Components:</span> {buildPlanPreview.components.length} ({buildPlanPreview.components.slice(0, 3).join(', ')}...)</div>
+                  <div><span className="font-medium text-[#f0f0f5]">Layout:</span> {buildPlanPreview.layout.join(' → ')}</div>
                 </div>
-                <p className="text-xs text-gray-600 mt-2 italic whitespace-pre-wrap">{buildPlanPreview.explanation}</p>
+                <p className="text-xs text-[#666] mt-2 italic whitespace-pre-wrap">{buildPlanPreview.explanation}</p>
               </div>
             </div>
           )}
@@ -617,14 +617,14 @@ export function Builder() {
         <BuildHistory projectId={currentProjectId} onSelectBuild={handleSelectBuild} />
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
-          <form onSubmit={handleSubmit} className="flex flex-col space-y-2">
+        <div className="border-t border-[#2a2a3e] p-4 bg-[#12121a]">
+          <form onSubmit={handleSubmit} className="flex flex-col space-y-3">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Describe what you want to build..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-4 py-3 bg-[#1a1a24] border border-[#2a2a3e] rounded-xl text-[#f0f0f5] placeholder-[#555] focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent resize-none transition-all"
               rows={3}
               disabled={isBuilding}
             />
@@ -633,7 +633,7 @@ export function Builder() {
                 <button
                   type="button"
                   onClick={() => setShowLogs(!showLogs)}
-                  className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-200 rounded-md"
+                  className="px-3 py-1.5 text-xs font-mono text-[#a0a0b0] hover:text-[#f0f0f5] hover:bg-[#1a1a24] rounded-lg transition-colors"
                 >
                   {showLogs ? 'Hide' : 'Show'} Logs ({logs.length})
                 </button>
@@ -641,39 +641,39 @@ export function Builder() {
                   type="button"
                   onClick={runDemo}
                   disabled={isDemoRunning || isBuilding || isBeautyDemoRunning}
-                  className="px-3 py-1 text-sm bg-purple-600 text-white hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md font-medium"
+                  className="px-3 py-1.5 text-xs font-mono bg-[#7c3aed] text-white hover:bg-[#7c3aed]/80 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed rounded-lg font-medium transition-all"
                 >
-                  {isDemoRunning ? 'Running...' : '🧪 Demo'}
+                  {isDemoRunning ? 'Running...' : 'Demo'}
                 </button>
                 <button
                   type="button"
                   onClick={runBeautyDemo}
                   disabled={isBeautyDemoRunning || isBuilding || isDemoRunning}
-                  className="px-3 py-1 text-sm bg-pink-600 text-white hover:bg-pink-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md font-medium"
+                  className="px-3 py-1.5 text-xs font-mono bg-pink-600 text-white hover:bg-pink-600/80 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed rounded-lg font-medium transition-all"
                 >
-                  {isBeautyDemoRunning ? 'Running...' : '✨ Beauty Demo'}
+                  {isBeautyDemoRunning ? 'Running...' : 'Beauty'}
                 </button>
               </div>
               <button
                 type="submit"
                 disabled={!input.trim() || isBuilding || isDemoRunning}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+                className="px-5 py-2 bg-white text-[#0a0a0f] rounded-lg font-mono font-medium text-xs uppercase tracking-wider hover:bg-[#f0f0f5] hover:-translate-y-0.5 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed disabled:transform-none transition-all"
               >
                 {isBuilding ? 'Building...' : 'Build'}
               </button>
             </div>
             {demoResults.length > 0 && (
-              <div className="mt-2 p-3 bg-gray-100 rounded-md space-y-1">
-                <p className="text-xs font-semibold text-gray-700 mb-2">Demo Results:</p>
+              <div className="mt-2 p-3 bg-[#1a1a24] border border-[#2a2a3e] rounded-xl space-y-1">
+                <p className="text-xs font-mono font-semibold text-[#a0a0b0] mb-2 uppercase tracking-wider">Demo Results:</p>
                 {demoResults.map((result, idx) => (
                   <div key={idx} className="text-xs flex items-start gap-2">
-                    <span className={result.status === 'pass' ? 'text-green-600' : 'text-red-600'}>
-                      {result.status === 'pass' ? '✅' : '❌'}
+                    <span className={result.status === 'pass' ? 'text-green-400' : 'text-red-400'}>
+                      {result.status === 'pass' ? '✓' : '✗'}
                     </span>
                     <div className="flex-1">
-                      <p className="font-medium">{result.prompt}</p>
+                      <p className="font-medium text-[#f0f0f5]">{result.prompt}</p>
                       {result.reason && (
-                        <p className="text-red-600 mt-0.5">{result.reason}</p>
+                        <p className="text-red-400 mt-0.5">{result.reason}</p>
                       )}
                     </div>
                   </div>
@@ -681,17 +681,17 @@ export function Builder() {
               </div>
             )}
             {beautyDemoResults.length > 0 && (
-              <div className="mt-2 p-3 bg-pink-50 border border-pink-200 rounded-md space-y-1">
-                <p className="text-xs font-semibold text-pink-900 mb-2">✨ Beauty Demo Results:</p>
+              <div className="mt-2 p-3 bg-pink-500/10 border border-pink-500/30 rounded-xl space-y-1">
+                <p className="text-xs font-mono font-semibold text-pink-400 mb-2 uppercase tracking-wider">Beauty Demo Results:</p>
                 {beautyDemoResults.map((result, idx) => (
                   <div key={idx} className="text-xs flex items-start gap-2">
-                    <span className={result.status === 'pass' ? 'text-green-600' : 'text-red-600'}>
-                      {result.status === 'pass' ? '✅' : '❌'}
+                    <span className={result.status === 'pass' ? 'text-green-400' : 'text-red-400'}>
+                      {result.status === 'pass' ? '✓' : '✗'}
                     </span>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">{result.prompt}</p>
+                      <p className="font-medium text-[#f0f0f5]">{result.prompt}</p>
                       {result.reason && (
-                        <p className="text-red-600 mt-0.5">{result.reason}</p>
+                        <p className="text-red-400 mt-0.5">{result.reason}</p>
                       )}
                     </div>
                   </div>
@@ -703,7 +703,7 @@ export function Builder() {
       </div>
 
       {/* Right Pane: Preview */}
-      <div className="w-1/2 bg-white">
+      <div className="w-1/2 bg-[#12121a]">
         <PreviewPane html={previewHtml} />
       </div>
 

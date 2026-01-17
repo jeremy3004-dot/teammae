@@ -38,12 +38,12 @@ export function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#1a1a24] transition-colors"
       >
-        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+        <div className="w-8 h-8 bg-gradient-to-br from-[#6366f1] to-[#7c3aed] rounded-full flex items-center justify-center text-white font-mono font-medium text-sm">
           {displayName[0].toUpperCase()}
         </div>
-        <span className="text-sm font-medium text-gray-700 max-w-[120px] truncate">
+        <span className="text-sm font-medium text-[#a0a0b0] max-w-[120px] truncate">
           {displayName}
         </span>
       </button>
@@ -54,14 +54,14 @@ export function UserMenu() {
             className="fixed inset-0 z-10"
             onClick={() => setShowMenu(false)}
           />
-          <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-            <div className="px-4 py-2 border-b border-gray-100">
-              <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Signed in</p>
+          <div className="absolute right-0 mt-2 w-56 bg-[#12121a] rounded-lg shadow-xl border border-[#2a2a3e] py-2 z-20">
+            <div className="px-4 py-2 border-b border-[#2a2a3e]">
+              <p className="text-sm font-medium text-[#f0f0f5] truncate">{user.email}</p>
+              <p className="text-xs text-[#666] mt-0.5">Signed in</p>
             </div>
             <button
               onClick={handleSignOut}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              className="w-full text-left px-4 py-2 text-sm text-[#a0a0b0] hover:bg-[#1a1a24] hover:text-[#f0f0f5] transition-colors"
             >
               Sign out
             </button>

@@ -13,24 +13,24 @@ export function Landing() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="max-w-4xl mx-auto text-center">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 badge-glow px-4 py-2 rounded-full mb-8">
+            <div className="inline-flex items-center gap-2 badge-glow px-4 py-2 rounded-full mb-8 animate-fade-in-down opacity-0">
               <span className="w-2 h-2 bg-accent rounded-full animate-pulse" />
               <span className="mono-heading text-xs">AI-Powered App Builder</span>
             </div>
 
             {/* Headline */}
-            <h1 className="mono-heading text-4xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-6">
+            <h1 className="mono-heading text-4xl lg:text-6xl xl:text-7xl font-bold tracking-tight mb-6 animate-fade-in-up opacity-0 delay-100">
               <span className="text-foreground">DESCRIBE YOUR APP.</span>
               <br />
               <span className="gradient-text">WATCH IT BUILD.</span>
             </h1>
 
-            <p className="text-base lg:text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base lg:text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in-up opacity-0 delay-200">
               Meet MAE – your Master AI Engineer. Build production-ready web apps, native iOS, and Android applications just by describing what you want.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up opacity-0 delay-300">
               <Link
                 to="/builder"
                 className="btn-primary px-8 py-4 rounded text-sm w-full sm:w-auto text-center"
@@ -90,9 +90,9 @@ export function Landing() {
             {features.map((feature, idx) => (
               <div
                 key={idx}
-                className="glow-card bg-card border border-border/50 rounded-lg p-6 hover:border-accent/50 transition-all duration-300"
+                className="glow-card bg-card border border-border/50 rounded-lg p-6 hover:border-accent/50 transition-all duration-300 hover:-translate-y-1"
               >
-                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   {feature.icon}
                 </div>
                 <h3 className="mono-heading text-sm font-semibold mb-2 text-foreground">{feature.title}</h3>
@@ -109,9 +109,9 @@ export function Landing() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left: MAE Image */}
             <div className="relative flex justify-center">
-              <div className="relative w-72 h-72 lg:w-96 lg:h-96">
+              <div className="relative w-72 h-72 lg:w-96 lg:h-96 animate-float">
                 {/* Glow effect behind */}
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/30 to-primary/30 rounded-full blur-3xl" />
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/30 to-primary/30 rounded-full blur-3xl animate-pulse-glow" />
                 {/* MAE mascot image */}
                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                   <img
@@ -214,8 +214,8 @@ export function Landing() {
             {pricingPlans.map((plan, idx) => (
               <div
                 key={idx}
-                className={`relative bg-card border rounded-lg p-8 ${
-                  plan.featured ? 'border-accent' : 'border-border/50'
+                className={`relative bg-card border rounded-lg p-8 transition-all duration-300 hover:-translate-y-1 ${
+                  plan.featured ? 'border-accent scale-105 shadow-lg shadow-accent/10' : 'border-border/50 hover:border-accent/50'
                 }`}
               >
                 {plan.featured && (

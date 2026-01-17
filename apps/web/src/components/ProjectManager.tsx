@@ -122,78 +122,104 @@ export function ProjectManager() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900">Projects</h2>
-        <button
-          onClick={createProject}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          Create Project
-        </button>
-      </div>
-
-      {loading && <p className="text-gray-600">Loading...</p>}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {projects.map((project) => (
+    <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="font-mono text-lg font-semibold text-[#f0f0f5] uppercase tracking-wider">Projects</h2>
           <button
-            key={project.id}
-            onClick={() => selectProject(project)}
-            className={`p-4 border rounded-lg text-left hover:border-blue-500 transition-colors ${
-              selectedProject?.id === project.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
-            }`}
+            onClick={createProject}
+            disabled={loading}
+            className="px-5 py-2.5 bg-white text-[#0a0a0f] rounded-lg font-mono font-medium text-xs uppercase tracking-wider hover:bg-[#f0f0f5] hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none transition-all"
           >
-            <h3 className="font-semibold text-gray-900">{project.name}</h3>
-            <p className="text-sm text-gray-600">{project.description}</p>
-            <span className="inline-block mt-2 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
-              {project.type}
-            </span>
+            Create Project
           </button>
-        ))}
-      </div>
+        </div>
 
-      {selectedProject && (
-        <div className="mt-8 border-t pt-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Files for {selectedProject.name}
-            </h3>
+        {loading && <p className="text-[#a0a0b0]">Loading...</p>}
+
+        {projects.length === 0 && !loading && (
+          <div className="text-center py-16 bg-[#12121a] border border-[#2a2a3e] rounded-xl">
+            <div className="w-16 h-16 bg-[#1a1a24] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#6366f1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <h3 className="font-mono text-sm font-semibold text-[#f0f0f5] uppercase tracking-wider mb-2">No Projects Yet</h3>
+            <p className="text-sm text-[#a0a0b0] mb-6">Create your first project to get started with MAE</p>
             <button
-              onClick={saveFile}
-              disabled={loading}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              onClick={createProject}
+              className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#7c3aed] text-white rounded-lg font-mono font-medium text-xs uppercase tracking-wider hover:opacity-90 transition-opacity"
             >
-              Add File
+              Create Your First Project
             </button>
           </div>
+        )}
 
-          <div className="bg-white border rounded-lg overflow-hidden">
-            {files.length === 0 ? (
-              <p className="p-4 text-gray-600">No files yet</p>
-            ) : (
-              <ul className="divide-y">
-                {files.map((file) => (
-                  <li key={file.id} className="p-4 hover:bg-gray-50">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-mono text-sm text-gray-900">{file.path}</p>
-                        <p className="text-xs text-gray-500">
-                          {file.size_bytes} bytes • v{file.version}
-                        </p>
-                      </div>
-                      <span className="text-xs font-medium px-2 py-1 bg-gray-100 rounded">
-                        {file.file_type}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((project) => (
+            <button
+              key={project.id}
+              onClick={() => selectProject(project)}
+              className={`p-5 border rounded-xl text-left transition-all duration-300 hover:-translate-y-1 ${
+                selectedProject?.id === project.id
+                  ? 'border-[#6366f1] bg-[#6366f1]/10'
+                  : 'border-[#2a2a3e] bg-[#12121a] hover:border-[#6366f1]/50'
+              }`}
+            >
+              <h3 className="font-semibold text-[#f0f0f5] mb-1">{project.name}</h3>
+              <p className="text-sm text-[#a0a0b0] mb-3">{project.description}</p>
+              <span className={`inline-block px-2.5 py-1 text-xs font-mono font-medium rounded-full uppercase tracking-wider ${
+                project.type === 'web'
+                  ? 'bg-[#6366f1]/10 text-[#6366f1] border border-[#6366f1]/30'
+                  : 'bg-[#7c3aed]/10 text-[#a78bfa] border border-[#7c3aed]/30'
+              }`}>
+                {project.type}
+              </span>
+            </button>
+          ))}
         </div>
-      )}
+
+        {selectedProject && (
+          <div className="mt-8 border-t border-[#2a2a3e] pt-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-mono text-base font-semibold text-[#f0f0f5] uppercase tracking-wider">
+                Files for {selectedProject.name}
+              </h3>
+              <button
+                onClick={saveFile}
+                disabled={loading}
+                className="px-4 py-2 bg-[#1a1a24] text-[#f0f0f5] border border-[#2a2a3e] rounded-lg font-mono font-medium text-xs uppercase tracking-wider hover:bg-[#2a2a3e] hover:border-[#6366f1] disabled:opacity-50 transition-all"
+              >
+                Add File
+              </button>
+            </div>
+
+            <div className="bg-[#12121a] border border-[#2a2a3e] rounded-xl overflow-hidden">
+              {files.length === 0 ? (
+                <p className="p-6 text-[#a0a0b0] text-center">No files yet</p>
+              ) : (
+                <ul className="divide-y divide-[#2a2a3e]">
+                  {files.map((file) => (
+                    <li key={file.id} className="p-4 hover:bg-[#1a1a24] transition-colors">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-mono text-sm text-[#f0f0f5]">{file.path}</p>
+                          <p className="text-xs text-[#666] mt-1">
+                            {file.size_bytes} bytes • v{file.version}
+                          </p>
+                        </div>
+                        <span className="text-xs font-mono font-medium px-2.5 py-1 bg-[#1a1a24] border border-[#2a2a3e] rounded-full text-[#a0a0b0]">
+                          {file.file_type}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

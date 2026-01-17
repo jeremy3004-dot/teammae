@@ -10,8 +10,9 @@ export function AuthGate({ children }: AuthGateProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
-  const [sendingLink, setSendingLink] = useState(false);
-  const [linkSent, setLinkSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -60,29 +61,25 @@ export function AuthGate({ children }: AuthGateProps) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSendMagicLink = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supabase || !email) return;
+    if (!supabase || !email || !password) return;
 
-    setSendingLink(true);
-    setLinkSent(false);
+    setIsSigningIn(true);
+    setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        options: {
-          emailRedirectTo: window.location.origin + '/builder',
-        },
+        password,
       });
 
       if (error) throw error;
-
-      setLinkSent(true);
-    } catch (error) {
-      console.error('Error sending magic link:', error);
-      alert('Failed to send magic link. Please try again.');
+    } catch (err: any) {
+      console.error('Error signing in:', err);
+      setError(err.message || 'Failed to sign in. Please try again.');
     } finally {
-      setSendingLink(false);
+      setIsSigningIn(false);
     }
   };
 
@@ -113,55 +110,51 @@ export function AuthGate({ children }: AuthGateProps) {
             <p className="text-gray-600">AI-Powered App Builder</p>
           </div>
 
-          {linkSent ? (
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+          <form onSubmit={handleSignIn} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
-              <p className="text-gray-600 mb-4">
-                We sent a magic link to <strong>{email}</strong>
-              </p>
-              <p className="text-sm text-gray-500">Click the link in the email to sign in</p>
-              <button
-                onClick={() => setLinkSent(false)}
-                className="mt-6 text-blue-600 hover:text-blue-700 text-sm font-medium"
-              >
-                Use a different email
-              </button>
+            )}
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-          ) : (
-            <form onSubmit={handleSendMagicLink} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
 
-              <button
-                type="submit"
-                disabled={sendingLink || !email}
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {sendingLink ? 'Sending...' : 'Send magic link'}
-              </button>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
 
-              <p className="text-xs text-center text-gray-500 mt-4">
-                We'll email you a magic link for a password-free sign in
-              </p>
-            </form>
-          )}
+            <button
+              type="submit"
+              disabled={isSigningIn || !email || !password}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSigningIn ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
         </div>
       </div>
     );

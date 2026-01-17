@@ -1,16 +1,17 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
-    {
+    // Only include dev server API plugin in dev mode, not during build
+    ...(command === 'serve' ? [{
       name: 'mae-api',
-      configureServer(server) {
-        server.middlewares.use(async (req, res, next) => {
+      configureServer(server: any) {
+        server.middlewares.use(async (req: any, res: any, next: any) => {
           if (req.url === '/api/mae/build' && req.method === 'POST') {
             let body = '';
-            req.on('data', (chunk) => {
+            req.on('data', (chunk: any) => {
               body += chunk.toString();
             });
             req.on('end', async () => {
@@ -35,9 +36,9 @@ export default defineConfig({
           }
         });
       },
-    },
+    }] : []),
   ],
   server: {
     port: 3000,
   },
-});
+}));

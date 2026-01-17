@@ -1,58 +1,77 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from '../_lib/auth';
-import { projectsClient } from '../_lib/db';
-import {
-  successResponse,
-  errorResponse,
-  unauthorizedResponse,
-  badRequestResponse,
-} from '../_lib/response';
+import { safeHandler } from '../_lib/safe-handler';
+import { createSupabaseServer } from '../_lib/supabase';
 
-export default async function handler(
-  req: VercelRequest,
-  res: VercelResponse
-) {
-  try {
-    // Verify authentication
-    const userId = await verifyAuth(req);
+async function handler(req: VercelRequest, res: VercelResponse) {
+  // Extract and verify auth token
+  const authHeader = req.headers.authorization;
 
-    if (req.method === 'GET') {
-      // List all projects for user
-      const projects = await projectsClient.list(userId);
-      return successResponse(res, { projects });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization header' });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const supabase = createSupabaseServer(token);
+
+  // Verify auth
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !authData.user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  const userId = authData.user.id;
+
+  // Handle GET - List all projects for user
+  if (req.method === 'GET') {
+    const { data: projects, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Projects list error:', error);
+      return res.status(500).json({ error: error.message });
     }
 
-    if (req.method === 'POST') {
-      // Create new project
-      const { name, description, type, template_id } = req.body;
+    return res.status(200).json({ projects: projects || [] });
+  }
 
-      if (!name || !type) {
-        return badRequestResponse(res, 'Missing required fields: name, type');
-      }
+  // Handle POST - Create new project
+  if (req.method === 'POST') {
+    const { name, description, type, template_id } = req.body;
 
-      if (!['web', 'mobile'].includes(type)) {
-        return badRequestResponse(res, 'Invalid type. Must be "web" or "mobile"');
-      }
+    if (!name || !type) {
+      return res.status(400).json({ error: 'Missing required fields: name, type' });
+    }
 
-      const project = await projectsClient.create(userId, {
+    if (!['web', 'mobile'].includes(type)) {
+      return res.status(400).json({ error: 'Invalid type. Must be "web" or "mobile"' });
+    }
+
+    const { data: project, error } = await supabase
+      .from('projects')
+      .insert({
+        user_id: userId,
         name,
         description,
         type,
         template_id,
-      });
+        metadata: {},
+      })
+      .select()
+      .single();
 
-      return successResponse(res, { project }, 201);
+    if (error) {
+      console.error('Project create error:', error);
+      return res.status(500).json({ error: error.message });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('Invalid or expired token')) {
-      return unauthorizedResponse(res);
-    }
-    console.error('Projects API error:', error);
-    return errorResponse(
-      res,
-      error instanceof Error ? error.message : 'Internal server error'
-    );
+    return res.status(201).json({ project });
   }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }
+
+export default safeHandler(handler, '/api/projects');

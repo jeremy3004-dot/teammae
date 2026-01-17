@@ -18,10 +18,17 @@ export async function verifyAuth(req: VercelRequest): Promise<string> {
 
   const token = authHeader.replace('Bearer ', '');
 
-  // Create Supabase client to verify the JWT
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  // Create Supabase client with the user's JWT in the Authorization header
+  // In Supabase v2, we set the token via headers, then call getUser() without arguments
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  });
 
-  const { data, error } = await supabase.auth.getUser(token);
+  const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
     throw new Error('Invalid or expired token');

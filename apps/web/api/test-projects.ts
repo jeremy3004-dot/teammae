@@ -28,8 +28,16 @@ export default async function handler(
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Verify the token
-    const { data: userData, error: authError } = await supabase.auth.getUser(token);
+    // Verify the token using v2 pattern
+    const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+
+    const { data: userData, error: authError } = await supabaseWithAuth.auth.getUser();
 
     if (authError || !userData.user) {
       return res.status(401).json({

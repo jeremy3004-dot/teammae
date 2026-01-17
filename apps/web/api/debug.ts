@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAuth } from './_lib/auth';
-import { getSupabase } from '@teammae/db';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(
   req: VercelRequest,
@@ -9,18 +9,23 @@ export default async function handler(
   try {
     const userId = await verifyAuth(req);
 
+    // Create Supabase client inline
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
     // Check if user exists in public.users
-    const { data: publicUser, error: publicUserError } = await getSupabase()
+    const { data: publicUser, error: publicUserError } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .single();
 
     // Check if user exists in auth.users
-    const { data: authSession } = await getSupabase().auth.getSession();
+    const { data: authSession } = await supabase.auth.getSession();
 
     // Try to list projects
-    const { data: projects, error: projectsError } = await getSupabase()
+    const { data: projects, error: projectsError } = await supabase
       .from('projects')
       .select('*')
       .eq('user_id', userId);

@@ -112,12 +112,13 @@ export function Landing() {
               <div className="relative w-72 h-72 lg:w-96 lg:h-96">
                 {/* Glow effect behind */}
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/30 to-primary/30 rounded-full blur-3xl" />
-                {/* Robot placeholder - replace with actual MAE image */}
-                <div className="relative w-full h-full bg-gradient-to-br from-secondary to-card rounded-full border border-border/50 flex items-center justify-center overflow-hidden">
-                  <div className="text-center">
-                    <div className="mono-heading text-6xl lg:text-8xl font-bold text-accent mb-2">MAE</div>
-                    <div className="text-xs text-muted-foreground">Master AI Engineer</div>
-                  </div>
+                {/* MAE mascot image */}
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                  <img
+                    src="/images/mae-mascot.png"
+                    alt="MAE - Master AI Engineer"
+                    className="w-full h-full object-contain drop-shadow-2xl"
+                  />
                 </div>
                 {/* AI Powered badge */}
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 badge-glow px-4 py-2 rounded-full flex items-center gap-2">

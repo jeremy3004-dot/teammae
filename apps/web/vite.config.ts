@@ -41,4 +41,14 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 3000,
   },
+  // Handle workspace CommonJS packages
+  optimizeDeps: {
+    include: ['@teammae/db', '@teammae/mae-core', '@teammae/types', '@teammae/build-pipeline'],
+  },
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/, /@teammae/],
+      transformMixedEsModules: true,
+    },
+  },
 }));

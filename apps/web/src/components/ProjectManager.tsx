@@ -1,6 +1,38 @@
 import { useState, useEffect } from 'react';
 import type { Project, ProjectFile } from '@teammae/types';
-import { projectsClient, filesClient } from '@teammae/db';
+
+// Stubbed clients - db package not available in browser build
+// In production, these would call the backend API
+const projectsClient = {
+  list: async (_userId: string): Promise<Project[]> => [],
+  create: async (_userId: string, data: { name: string; type: string; description?: string }): Promise<Project> => ({
+    id: crypto.randomUUID(),
+    user_id: _userId,
+    name: data.name,
+    type: data.type as 'web' | 'mobile',
+    description: data.description || '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    metadata: {},
+  }),
+};
+
+const filesClient = {
+  list: async (_projectId: string): Promise<ProjectFile[]> => [],
+  save: async (_projectId: string, files: Array<{ path: string; content: string }>): Promise<ProjectFile[]> =>
+    files.map(f => ({
+      id: crypto.randomUUID(),
+      project_id: _projectId,
+      path: f.path,
+      content: f.content,
+      file_type: 'other' as const,
+      size_bytes: f.content.length,
+      checksum: '',
+      version: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })),
+};
 
 export function ProjectManager() {
   const [projects, setProjects] = useState<Project[]>([]);

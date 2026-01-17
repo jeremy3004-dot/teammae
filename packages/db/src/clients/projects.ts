@@ -1,6 +1,5 @@
 import { supabase } from '../supabase';
 import type { Project, CreateProjectRequest } from '@teammae/types';
-import crypto from 'crypto';
 
 export class ProjectsClient {
   async create(userId: string, data: CreateProjectRequest): Promise<Project> {

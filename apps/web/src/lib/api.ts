@@ -72,8 +72,7 @@ export interface CreateProjectRequest {
 
 export const projectsApi = {
   async list(): Promise<Project[]> {
-    // Temporarily use test-projects endpoint to debug
-    const data = await apiRequest<{ projects: Project[] }>('/test-projects');
+    const data = await apiRequest<{ projects: Project[] }>('/projects');
     return data.projects;
   },
 

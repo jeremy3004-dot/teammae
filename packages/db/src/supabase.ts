@@ -18,9 +18,6 @@ export function getSupabase() {
   return _supabase;
 }
 
-// Export for compatibility (will throw if not configured)
-export const supabase = new Proxy({} as any, {
-  get(_target, prop) {
-    return getSupabase()[prop];
-  },
-});
+// Direct export - call getSupabase() when you need it instead of using a Proxy
+// This is safer for serverless environments
+export const supabase = getSupabase();

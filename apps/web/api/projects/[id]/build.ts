@@ -101,7 +101,7 @@ export default async function handler(
         user_id: userId,
         status: 'building',
         trigger: 'manual',
-        summary: prompt.slice(0, 200),
+        // Note: 'summary' column may not exist yet - run migration 001_add_build_fields.sql
       })
       .select()
       .single();

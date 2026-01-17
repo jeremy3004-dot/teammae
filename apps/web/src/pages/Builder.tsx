@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PreviewPane } from '../components/PreviewPane';
 import { LogsDrawer } from '../components/LogsDrawer';
-import { supabase } from '../lib/supabase';
+import { buildsApi, filesApi, type BuildLog as ApiBuildLog, type ProjectFile } from '../lib/api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -11,7 +11,7 @@ interface Message {
 }
 
 interface BuildLog {
-  level: 'info' | 'warn' | 'error';
+  level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
   timestamp: Date;
 }
@@ -21,17 +21,24 @@ interface BuildStep {
   status: 'pending' | 'active' | 'complete';
 }
 
+type RightPaneTab = 'preview' | 'files';
+
 export function Builder() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isBuilding, setIsBuilding] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [previewHtml] = useState<string>('');
+  const [_currentBuildId, setCurrentBuildId] = useState<string | null>(null);
   const [logs, setLogs] = useState<BuildLog[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [buildSteps, setBuildSteps] = useState<BuildStep[]>([]);
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+  const [rightPaneTab, setRightPaneTab] = useState<RightPaneTab>('preview');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,70 +48,169 @@ export function Builder() {
     scrollToBottom();
   }, [messages]);
 
-  // Handle initial prompt from Home page
+  // Handle initial prompt and project from Home page
   useEffect(() => {
     const state = location.state as { initialPrompt?: string; projectId?: string } | null;
-    if (state?.initialPrompt) {
+
+    if (state?.projectId) {
+      setCurrentProjectId(state.projectId);
+      // Load existing files for this project
+      loadProjectFiles(state.projectId);
+    }
+
+    if (state?.initialPrompt && state?.projectId) {
       setInput(state.initialPrompt);
       // Auto-submit after a brief delay
       setTimeout(() => {
-        const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-        handleSubmitWithPrompt(state.initialPrompt!, fakeEvent);
+        handleSubmitWithPrompt(state.initialPrompt!, state.projectId!);
       }, 100);
     }
-    if (state?.projectId) {
-      setCurrentProjectId(state.projectId);
-    }
   }, [location.state]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const loadProjectFiles = async (projectId: string) => {
+    try {
+      const files = await filesApi.list(projectId);
+      setProjectFiles(files);
+    } catch (error) {
+      console.error('Failed to load project files:', error);
+    }
+  };
 
   const addLog = (level: BuildLog['level'], message: string) => {
     setLogs((prev) => [...prev, { level, message, timestamp: new Date() }]);
   };
 
-  const getAuthHeaders = async (): Promise<Record<string, string>> => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+  const startBuildPolling = (buildId: string) => {
+    // Clear any existing polling
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
 
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
+    let pollCount = 0;
+    const maxPolls = 45; // 45 * 2s = 90 seconds
+
+    pollingIntervalRef.current = setInterval(async () => {
+      pollCount++;
+
+      if (pollCount >= maxPolls) {
+        // Timeout after 90 seconds
+        clearInterval(pollingIntervalRef.current!);
+        pollingIntervalRef.current = null;
+        addLog('error', 'Build timeout after 90 seconds');
+        setIsBuilding(false);
+        setBuildSteps([]);
+
+        const timeoutMsg: Message = {
+          role: 'assistant',
+          content: 'Build timed out after 90 seconds. Please try again or simplify your request.',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, timeoutMsg]);
+        return;
+      }
+
+      try {
+        const { build, logs: buildLogs } = await buildsApi.getStatus(buildId);
+
+        // Update logs from server
+        const newLogs: BuildLog[] = buildLogs.map((log: ApiBuildLog) => ({
+          level: log.level,
+          message: log.message,
+          timestamp: new Date(log.timestamp),
+        }));
+        setLogs(newLogs);
+
+        // Update build steps based on logs
+        updateBuildSteps(buildLogs);
+
+        // Check if build is complete
+        if (build.status === 'success' || build.status === 'failed') {
+          clearInterval(pollingIntervalRef.current!);
+          pollingIntervalRef.current = null;
+          setIsBuilding(false);
+          setBuildSteps([]);
+
+          if (build.status === 'success') {
+            addLog('info', 'Build completed successfully');
+
+            const successMsg: Message = {
+              role: 'assistant',
+              content: 'Build complete! Your app is ready. Check the Files tab to see the generated code.',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, successMsg]);
+
+            // Load the generated files
+            if (currentProjectId) {
+              await loadProjectFiles(currentProjectId);
+              // Switch to files tab to show results
+              setRightPaneTab('files');
+            }
+          } else {
+            addLog('error', build.error_message || 'Build failed');
+
+            const errorMsg: Message = {
+              role: 'assistant',
+              content: `Build failed: ${build.error_message || 'Unknown error'}`,
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorMsg]);
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+        // Don't stop polling on network errors, just log
+        addLog('warn', 'Failed to fetch build status');
+      }
+    }, 2000); // Poll every 2 seconds
+  };
+
+  const updateBuildSteps = (buildLogs: ApiBuildLog[]) => {
+    const steps: BuildStep[] = [
+      { label: 'Analyzing requirements', status: 'pending' },
+      { label: 'Generating application code', status: 'pending' },
+      { label: 'Saving files', status: 'pending' },
+      { label: 'Build complete', status: 'pending' },
+    ];
+
+    // Map log messages to steps
+    let currentStep = 0;
+    for (const log of buildLogs) {
+      if (log.message.includes('Starting build') || log.message.includes('Analyzing')) {
+        currentStep = Math.max(currentStep, 0);
+      } else if (log.message.includes('Generating')) {
+        currentStep = Math.max(currentStep, 1);
+      } else if (log.message.includes('Saving')) {
+        currentStep = Math.max(currentStep, 2);
+      } else if (log.message.includes('completed successfully')) {
+        currentStep = 3;
       }
     }
 
-    return headers;
+    setBuildSteps(steps.map((step, i) => ({
+      ...step,
+      status: i < currentStep ? 'complete' : i === currentStep ? 'active' : 'pending',
+    })));
   };
 
-  const simulateBuildSteps = () => {
-    const steps: BuildStep[] = [
-      { label: 'Analyzing requirements', status: 'active' },
-      { label: 'Generating React components', status: 'pending' },
-      { label: 'Applying styles', status: 'pending' },
-      { label: 'Compiling preview', status: 'pending' },
-    ];
-    setBuildSteps(steps);
-
-    // Simulate step progression
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      currentStep++;
-      if (currentStep >= steps.length) {
-        clearInterval(interval);
-        return;
-      }
-      setBuildSteps(prev => prev.map((step, i) => ({
-        ...step,
-        status: i < currentStep ? 'complete' : i === currentStep ? 'active' : 'pending'
-      })));
-    }, 1500);
-
-    return () => clearInterval(interval);
-  };
-
-  const handleSubmitWithPrompt = async (promptText: string, e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitWithPrompt = async (promptText: string, projectId?: string) => {
     if (!promptText.trim() || isBuilding) return;
+
+    const effectiveProjectId = projectId || currentProjectId;
+
+    if (!effectiveProjectId) {
+      addLog('error', 'No project selected');
+      return;
+    }
 
     const userMessage: Message = {
       role: 'user',
@@ -116,48 +222,26 @@ export function Builder() {
     setInput('');
     setIsBuilding(true);
 
-    // Start build step simulation
-    const cleanupSteps = simulateBuildSteps();
+    // Initialize build steps
+    setBuildSteps([
+      { label: 'Analyzing requirements', status: 'active' },
+      { label: 'Generating application code', status: 'pending' },
+      { label: 'Saving files', status: 'pending' },
+      { label: 'Build complete', status: 'pending' },
+    ]);
 
     addLog('info', `Building: ${userMessage.content}`);
 
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch('/api/mae/build', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          projectId: currentProjectId,
-          prompt: userMessage.content,
-          existingFiles: [],
-        }),
-      });
+      const result = await buildsApi.create(effectiveProjectId, userMessage.content);
 
-      if (!response.ok) {
-        throw new Error(`Build failed: ${response.statusText}`);
-      }
+      setCurrentBuildId(result.buildId);
+      addLog('info', `Build started with ID: ${result.buildId}`);
 
-      const result = await response.json();
-
-      addLog('info', `Received ${result.files?.length || 0} files`);
-
-      // Mark all steps complete
-      setBuildSteps(prev => prev.map(step => ({ ...step, status: 'complete' as const })));
-
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: result.summary || 'Build complete! Your app is ready.',
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      if (result.previewHtml) {
-        setPreviewHtml(result.previewHtml);
-        addLog('info', 'Preview generated successfully');
-      }
+      // Start polling for build status
+      startBuildPolling(result.buildId);
     } catch (error) {
-      cleanupSteps();
+      setIsBuilding(false);
       setBuildSteps([]);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       addLog('error', errorMessage);
@@ -169,13 +253,12 @@ export function Builder() {
       };
 
       setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      setIsBuilding(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    return handleSubmitWithPrompt(input, e);
+    e.preventDefault();
+    return handleSubmitWithPrompt(input);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -184,6 +267,29 @@ export function Builder() {
       handleSubmit(e);
     }
   };
+
+  // Require project to be selected
+  if (!currentProjectId) {
+    return (
+      <div className="flex h-[calc(100vh-73px)] items-center justify-center bg-[#0a0a0f]">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-[#1a1a24] flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-[#6366f1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-mono font-semibold text-[#f0f0f5] mb-2">No Project Selected</h3>
+          <p className="text-sm text-[#555] mb-6">Please go back to the home page and start a new build</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-2.5 bg-white text-[#0a0a0f] rounded-xl font-mono font-semibold text-sm uppercase tracking-wider hover:bg-[#f0f0f5] transition-colors"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-73px)]">
@@ -348,71 +454,144 @@ export function Builder() {
         </div>
       </div>
 
-      {/* Right Pane: Preview */}
+      {/* Right Pane: Tabs (Files | Preview) */}
       <div className="w-1/2 bg-[#12121a] flex flex-col">
-        {isBuilding && buildSteps.length > 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8">
-            <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-[#2a2a3e] mb-6 animate-pulse">
-              <img
-                src="/images/mae-mascot.png"
-                alt="MAE"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  target.parentElement!.innerHTML = `
-                    <div class="w-full h-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center">
-                      <span class="text-2xl font-bold text-white font-mono">M</span>
-                    </div>
-                  `;
-                }}
-              />
-            </div>
-            <h3 className="text-xl font-mono font-semibold text-[#f0f0f5] mb-8">Building...</h3>
-            <div className="space-y-3 w-full max-w-sm">
-              {buildSteps.map((step, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                    step.status === 'complete' ? 'bg-green-500' :
-                    step.status === 'active' ? 'bg-[#6366f1]' :
-                    'bg-[#2a2a3e]'
-                  }`}>
-                    {step.status === 'complete' ? (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : step.status === 'active' ? (
-                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                    ) : (
-                      <div className="w-2 h-2 bg-[#555] rounded-full"></div>
-                    )}
+        {/* Tab Headers */}
+        <div className="flex border-b border-[#2a2a3e]">
+          <button
+            onClick={() => setRightPaneTab('files')}
+            className={`flex-1 px-4 py-3 text-sm font-mono font-medium transition-colors ${
+              rightPaneTab === 'files'
+                ? 'text-[#f0f0f5] border-b-2 border-[#6366f1] bg-[#12121a]'
+                : 'text-[#666] hover:text-[#a0a0b0] bg-[#0a0a0f]'
+            }`}
+          >
+            Files ({projectFiles.length})
+          </button>
+          <button
+            onClick={() => setRightPaneTab('preview')}
+            className={`flex-1 px-4 py-3 text-sm font-mono font-medium transition-colors ${
+              rightPaneTab === 'preview'
+                ? 'text-[#f0f0f5] border-b-2 border-[#6366f1] bg-[#12121a]'
+                : 'text-[#666] hover:text-[#a0a0b0] bg-[#0a0a0f]'
+            }`}
+          >
+            Preview
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="flex-1 overflow-hidden">
+          {rightPaneTab === 'files' ? (
+            // Files Tab
+            <div className="h-full overflow-y-auto">
+              {isBuilding && buildSteps.length > 0 ? (
+                // Show build steps while building
+                <div className="flex flex-col items-center justify-center h-full p-8">
+                  <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-[#2a2a3e] mb-6 animate-pulse">
+                    <img
+                      src="/images/mae-mascot.png"
+                      alt="MAE"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.parentElement!.innerHTML = `
+                          <div class="w-full h-full bg-gradient-to-br from-[#6366f1] to-[#7c3aed] flex items-center justify-center">
+                            <span class="text-2xl font-bold text-white font-mono">M</span>
+                          </div>
+                        `;
+                      }}
+                    />
                   </div>
-                  <span className={`text-sm ${
-                    step.status === 'complete' ? 'text-green-400' :
-                    step.status === 'active' ? 'text-[#f0f0f5]' :
-                    'text-[#555]'
-                  }`}>
-                    {step.label}
-                  </span>
+                  <h3 className="text-xl font-mono font-semibold text-[#f0f0f5] mb-8">Building...</h3>
+                  <div className="space-y-3 w-full max-w-sm">
+                    {buildSteps.map((step, idx) => (
+                      <div key={idx} className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                          step.status === 'complete' ? 'bg-green-500' :
+                          step.status === 'active' ? 'bg-[#6366f1]' :
+                          'bg-[#2a2a3e]'
+                        }`}>
+                          {step.status === 'complete' ? (
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : step.status === 'active' ? (
+                            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                          ) : (
+                            <div className="w-2 h-2 bg-[#555] rounded-full"></div>
+                          )}
+                        </div>
+                        <span className={`text-sm ${
+                          step.status === 'complete' ? 'text-green-400' :
+                          step.status === 'active' ? 'text-[#f0f0f5]' :
+                          'text-[#555]'
+                        }`}>
+                          {step.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              ) : projectFiles.length === 0 ? (
+                // No files yet
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                  <div className="w-20 h-20 rounded-full bg-[#1a1a24] flex items-center justify-center mb-6">
+                    <svg className="w-10 h-10 text-[#2a2a3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-mono font-semibold text-[#f0f0f5] mb-2">No Files Yet</h3>
+                  <p className="text-sm text-[#555] max-w-xs">
+                    Generated files will appear here once MAE completes the build
+                  </p>
+                </div>
+              ) : (
+                // File tree
+                <div className="p-4">
+                  <div className="space-y-1">
+                    {projectFiles.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#1a1a24] hover:bg-[#2a2a3e] border border-[#2a2a3e] rounded-lg transition-colors cursor-pointer group"
+                      >
+                        <svg className="w-4 h-4 text-[#6366f1] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-sm text-[#f0f0f5] font-mono flex-1 truncate group-hover:text-white transition-colors">
+                          {file.path}
+                        </span>
+                        <span className="text-xs text-[#555] font-mono">
+                          {(file.size_bytes / 1024).toFixed(1)}KB
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        ) : previewHtml ? (
-          <PreviewPane html={previewHtml} />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-20 h-20 rounded-full bg-[#1a1a24] flex items-center justify-center mb-6">
-              <svg className="w-10 h-10 text-[#2a2a3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+          ) : (
+            // Preview Tab
+            <div className="h-full">
+              {previewHtml ? (
+                <PreviewPane html={previewHtml} />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center">
+                  <div className="w-20 h-20 rounded-full bg-[#1a1a24] flex items-center justify-center mb-6">
+                    <svg className="w-10 h-10 text-[#2a2a3e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-mono font-semibold text-[#f0f0f5] mb-2">Preview</h3>
+                  <p className="text-sm text-[#555] max-w-xs">
+                    Preview functionality coming soon. For now, check the Files tab to see generated code.
+                  </p>
+                </div>
+              )}
             </div>
-            <h3 className="text-lg font-mono font-semibold text-[#f0f0f5] mb-2">Preview</h3>
-            <p className="text-sm text-[#555] max-w-xs">
-              Your app preview will appear here once MAE starts building
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Logs Drawer */}

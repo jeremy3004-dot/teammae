@@ -1,19 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-
-interface Project {
-  id: string;
-  name: string;
-  type: string;
-  description: string;
-  updated_at: string;
-}
+import { projectsApi, type Project } from '../lib/api';
 
 export function Home() {
   const [prompt, setPrompt] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,29 +14,13 @@ export function Home() {
   }, []);
 
   const loadProjects = async () => {
-    if (!isSupabaseConfigured || !supabase) {
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(6);
-
-      if (error) throw error;
-      setProjects(data || []);
-    } catch (error) {
-      console.error('Failed to load projects:', error);
+      const data = await projectsApi.list();
+      setProjects(data.slice(0, 6)); // Show only first 6 on home
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load projects');
     } finally {
       setLoading(false);
     }
@@ -52,8 +29,20 @@ export function Home() {
   const handleBuild = async () => {
     if (!prompt.trim()) return;
 
-    // Navigate to builder with the prompt
-    navigate('/builder', { state: { initialPrompt: prompt } });
+    try {
+      // Create a new project for this build
+      const project = await projectsApi.create({
+        name: `Project ${new Date().toLocaleString()}`,
+        description: prompt.slice(0, 200),
+        type: 'web',
+      });
+
+      // Navigate to builder with the project ID and prompt
+      navigate('/builder', { state: { projectId: project.id, initialPrompt: prompt } });
+    } catch (err) {
+      console.error('Failed to create project:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create project');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -118,6 +107,11 @@ export function Home() {
 
       {/* Main Input Area */}
       <div className="w-full max-w-2xl mb-12 animate-fade-in-up opacity-0 delay-100">
+        {error && (
+          <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+            {error}
+          </div>
+        )}
         <div className="bg-[#12121a] border border-[#2a2a3e] rounded-2xl p-1 focus-within:border-[#6366f1] transition-colors">
           <textarea
             value={prompt}

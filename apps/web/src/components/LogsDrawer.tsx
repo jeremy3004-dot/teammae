@@ -1,5 +1,5 @@
 interface BuildLog {
-  level: 'info' | 'warn' | 'error';
+  level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
   timestamp: Date;
 }
@@ -36,6 +36,8 @@ export function LogsDrawer({ logs, onClose }: LogsDrawerProps) {
                     ? 'text-red-400'
                     : log.level === 'warn'
                     ? 'text-yellow-400'
+                    : log.level === 'debug'
+                    ? 'text-gray-500'
                     : 'text-blue-400'
                 }
               >

@@ -1,49 +1,22 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ command }) => ({
-  plugins: [
-    react(),
-    // Only include dev server API plugin in dev mode, not during build
-    ...(command === 'serve' ? [{
-      name: 'mae-api',
-      configureServer(server: any) {
-        server.middlewares.use(async (req: any, res: any, next: any) => {
-          if (req.url === '/api/mae/build' && req.method === 'POST') {
-            let body = '';
-            req.on('data', (chunk: any) => {
-              body += chunk.toString();
-            });
-            req.on('end', async () => {
-              try {
-                const { maeBuildHandler } = await import('./server/api');
-                const parsedBody = JSON.parse(body);
-                req.body = parsedBody;
-
-                await maeBuildHandler(req as any, res as any, next);
-              } catch (error) {
-                console.error('Vite middleware error:', error);
-                res.statusCode = 500;
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({
-                  error: 'Internal server error',
-                  details: error instanceof Error ? error.message : String(error)
-                }));
-              }
-            });
-          } else {
-            next();
-          }
-        });
-      },
-    }] : []),
-  ],
+export default defineConfig({
+  plugins: [react()],
   server: {
     port: 3000,
+    // Proxy API requests to Vercel dev server in local development
+    // Run `vercel dev` in parallel with `pnpm dev` for local testing
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
-  // Handle workspace CommonJS packages
+  // Only include packages actually imported by client code
   optimizeDeps: {
-    include: ['@teammae/db', '@teammae/mae-core', '@teammae/types', '@teammae/build-pipeline'],
+    include: ['@teammae/types'],
   },
   build: {
     commonjsOptions: {
@@ -51,4 +24,4 @@ export default defineConfig(({ command }) => ({
       transformMixedEsModules: true,
     },
   },
-}));
+});

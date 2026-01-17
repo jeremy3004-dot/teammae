@@ -1,0 +1,30 @@
+{
+  "name": "teammae",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "web": "pnpm --filter @teammae/web dev",
+    "db:setup": "pnpm --filter @teammae/db setup"
+  },
+  "devDependencies": {
+    "turbo": "^1.13.0",
+    "typescript": "^5.3.3"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.6",
+    "@types/react-router-dom": "^5.3.3",
+    "body-parser": "^2.2.2",
+    "esbuild": "^0.27.2",
+    "express": "^5.2.1",
+    "react-router-dom": "^7.12.0"
+  }
+}

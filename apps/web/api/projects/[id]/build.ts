@@ -19,6 +19,7 @@ export default async function handler(
   let buildId: string | null = null;
 
   try {
+    console.log('[build] Step 1: Checking auth header');
     // Verify authentication
     const authHeader = req.headers.authorization;
 
@@ -28,6 +29,7 @@ export default async function handler(
 
     const token = authHeader.replace('Bearer ', '');
 
+    console.log('[build] Step 2: Checking Supabase config');
     // Create Supabase client inline
     const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -36,6 +38,7 @@ export default async function handler(
       return res.status(500).json({ error: 'Missing Supabase configuration' });
     }
 
+    console.log('[build] Step 3: Creating Supabase client');
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
@@ -44,6 +47,7 @@ export default async function handler(
       }
     });
 
+    console.log('[build] Step 4: Verifying auth');
     // Verify auth
     const { data: authData, error: authError } = await supabase.auth.getUser();
 
@@ -52,6 +56,7 @@ export default async function handler(
     }
 
     const userId = authData.user.id;
+    console.log('[build] Step 5: Auth verified, userId:', userId);
 
     // Extract project ID from query
     const { id } = req.query;
@@ -61,6 +66,7 @@ export default async function handler(
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    console.log('[build] Step 6: Fetching project:', projectId);
     // Verify project exists and user owns it
     const { data: project, error: projectError } = await supabase
       .from('projects')
@@ -68,7 +74,7 @@ export default async function handler(
       .eq('id', projectId)
       .single();
 
-    if (projectError) throw projectError;
+    if (projectError) throw new Error(projectError.message || 'Failed to fetch project');
 
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
@@ -78,6 +84,7 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    console.log('[build] Step 7: Project verified, checking prompt');
     // Validate request body
     const { prompt } = req.body;
 
@@ -85,6 +92,7 @@ export default async function handler(
       return res.status(400).json({ error: 'Missing or invalid prompt' });
     }
 
+    console.log('[build] Step 8: Creating build record');
     // Create build record
     const { data: build, error: buildError } = await supabase
       .from('builds')
@@ -98,7 +106,8 @@ export default async function handler(
       .select()
       .single();
 
-    if (buildError) throw buildError;
+    if (buildError) throw new Error(buildError.message || 'Failed to create build record');
+    console.log('[build] Step 9: Build record created:', build.id);
     buildId = build.id;
 
     // Add initial log
@@ -183,14 +192,24 @@ export default async function handler(
       entryPoint: generatedFiles.entry,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : '';
+    // Handle both Error instances and Supabase-style error objects
+    let errorMessage: string;
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      errorMessage = String((error as { message: unknown }).message);
+    } else {
+      errorMessage = String(error) || 'Unknown error';
+    }
+    const errorStack = error instanceof Error ? error.stack : JSON.stringify(error);
 
     console.error('Build API error:', {
       message: errorMessage,
       stack: errorStack,
       buildId,
       hasApiKey: !!ANTHROPIC_API_KEY,
+      errorType: typeof error,
+      errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
     });
 
     // Mark build as failed if we have a buildId

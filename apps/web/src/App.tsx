@@ -4,6 +4,9 @@ import { UserMenu } from './components/UserMenu';
 import { ProjectManager } from './components/ProjectManager';
 import { Builder } from './pages/Builder';
 import { Landing } from './pages/Landing';
+import { Features } from './pages/Features';
+import { Pricing } from './pages/Pricing';
+import { About } from './pages/About';
 
 function AuthenticatedApp() {
   const location = useLocation();
@@ -57,9 +60,18 @@ function AuthenticatedApp() {
 function App() {
   const location = useLocation();
 
-  // Show landing page for /landing route (public, no auth required)
-  if (location.pathname === '/landing') {
-    return <Landing />;
+  // Public marketing pages (no auth required)
+  const publicPaths = ['/landing', '/features', '/pricing', '/about'];
+
+  if (publicPaths.includes(location.pathname)) {
+    return (
+      <Routes>
+        <Route path="/landing" element={<Landing />} />
+        <Route path="/features" element={<Features />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/about" element={<About />} />
+      </Routes>
+    );
   }
 
   // All other routes require authentication

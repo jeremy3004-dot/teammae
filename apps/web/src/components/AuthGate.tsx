@@ -91,10 +91,10 @@ export function AuthGate({ children }: AuthGateProps) {
   // Loading
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#6366f1]"></div>
+          <p className="mt-4 text-[#a0a0b0]">Loading...</p>
         </div>
       </div>
     );
@@ -103,22 +103,38 @@ export function AuthGate({ children }: AuthGateProps) {
   // Not signed in - show auth UI
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Background grid pattern */}
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: 'linear-gradient(to right, rgba(42, 42, 62, 0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(42, 42, 62, 0.3) 1px, transparent 1px)',
+            backgroundSize: '60px 60px'
+          }}
+        />
+        {/* Radial gradient overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(ellipse at center top, rgba(99, 102, 241, 0.15) 0%, transparent 60%)'
+          }}
+        />
+
+        <div className="relative bg-[#12121a] border border-[#2a2a3e] rounded-2xl p-8 max-w-md w-full shadow-2xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">TeamMAE.ai</h1>
-            <p className="text-gray-600">AI-Powered App Builder</p>
+            <h1 className="font-mono text-2xl font-bold text-[#f0f0f5] tracking-wider uppercase mb-2">MAE</h1>
+            <p className="text-[#a0a0b0] text-sm">Master AI Engineer</p>
           </div>
 
-          <form onSubmit={handleSignIn} className="space-y-4">
+          <form onSubmit={handleSignIn} className="space-y-5">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-xs font-mono font-medium text-[#a0a0b0] mb-2 uppercase tracking-wider">
                 Email address
               </label>
               <input
@@ -128,12 +144,12 @@ export function AuthGate({ children }: AuthGateProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-[#1a1a24] border border-[#2a2a3e] rounded-lg text-[#f0f0f5] placeholder-[#555] focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent transition-all"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-xs font-mono font-medium text-[#a0a0b0] mb-2 uppercase tracking-wider">
                 Password
               </label>
               <input
@@ -143,18 +159,22 @@ export function AuthGate({ children }: AuthGateProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-[#1a1a24] border border-[#2a2a3e] rounded-lg text-[#f0f0f5] placeholder-[#555] focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent transition-all"
               />
             </div>
 
             <button
               type="submit"
               disabled={isSigningIn || !email || !password}
-              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              className="w-full px-6 py-3 bg-white text-[#0a0a0f] rounded-lg font-mono font-medium uppercase tracking-wider text-sm hover:bg-[#f0f0f5] hover:-translate-y-0.5 disabled:bg-[#2a2a3e] disabled:text-[#555] disabled:cursor-not-allowed disabled:transform-none transition-all"
             >
               {isSigningIn ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <p className="mt-6 text-center text-xs text-[#555]">
+            Powered by AI
+          </p>
         </div>
       </div>
     );

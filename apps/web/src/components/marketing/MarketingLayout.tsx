@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 interface MarketingLayoutProps {
@@ -5,6 +6,8 @@ interface MarketingLayoutProps {
 }
 
 export function MarketingLayout({ children }: MarketingLayoutProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
@@ -12,7 +15,7 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to="/landing" className="flex items-center space-x-2">
               <span className="mono-heading text-xl font-bold tracking-wider">MAE</span>
             </Link>
 
@@ -30,10 +33,10 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
             </div>
 
             {/* Auth Buttons */}
-            <div className="flex items-center space-x-4">
+            <div className="hidden md:flex items-center space-x-4">
               <Link
                 to="/builder"
-                className="hidden md:inline-block mono-heading text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="mono-heading text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Log in
               </Link>
@@ -46,13 +49,67 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
             </div>
 
             {/* Mobile Menu Button */}
-            <button className="md:hidden p-2 text-muted-foreground hover:text-foreground">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-muted-foreground hover:text-foreground"
+            >
+              {mobileMenuOpen ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border/50 bg-background">
+            <div className="container mx-auto px-4 py-4 space-y-4">
+              <Link
+                to="/features"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block mono-heading text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                Features
+              </Link>
+              <Link
+                to="/pricing"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block mono-heading text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                Pricing
+              </Link>
+              <Link
+                to="/about"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block mono-heading text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                About MAE
+              </Link>
+              <div className="border-t border-border/50 pt-4 space-y-3">
+                <Link
+                  to="/builder"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block mono-heading text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/builder"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="btn-primary block text-center px-4 py-3 rounded text-sm"
+                >
+                  Get Started <span className="ml-1">&rarr;</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Main Content */}

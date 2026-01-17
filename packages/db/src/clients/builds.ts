@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { getSupabase } from '../supabase';
 import type { Build, BuildLog, BuildArtifact, BuildStatus } from '@teammae/types';
 
 export class BuildsClient {
@@ -11,7 +11,7 @@ export class BuildsClient {
       summary?: string;
     } = {}
   ): Promise<Build> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('builds')
       .insert({
         project_id: projectId,
@@ -30,7 +30,7 @@ export class BuildsClient {
   }
 
   async get(buildId: string): Promise<Build | null> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('builds')
       .select('*')
       .eq('id', buildId)
@@ -41,7 +41,7 @@ export class BuildsClient {
   }
 
   async list(projectId: string, limit = 50): Promise<Build[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('builds')
       .select('*')
       .eq('project_id', projectId)
@@ -66,7 +66,7 @@ export class BuildsClient {
       updates.completed_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('builds')
       .update(updates)
       .eq('id', buildId)
@@ -83,7 +83,7 @@ export class BuildsClient {
     message: string,
     metadata?: Record<string, any>
   ): Promise<void> {
-    const { error } = await supabase.from('build_logs').insert({
+    const { error } = await getSupabase().from('build_logs').insert({
       build_id: buildId,
       level,
       message,
@@ -94,7 +94,7 @@ export class BuildsClient {
   }
 
   async getLogs(buildId: string): Promise<BuildLog[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('build_logs')
       .select('*')
       .eq('build_id', buildId)
@@ -111,7 +111,7 @@ export class BuildsClient {
     sizeBytes: number,
     url?: string
   ): Promise<BuildArtifact> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('build_artifacts')
       .insert({
         build_id: buildId,
@@ -128,7 +128,7 @@ export class BuildsClient {
   }
 
   async getArtifacts(buildId: string): Promise<BuildArtifact[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('build_artifacts')
       .select('*')
       .eq('build_id', buildId);

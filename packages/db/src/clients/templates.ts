@@ -1,9 +1,9 @@
-import { supabase } from '../supabase';
+import { getSupabase } from '../supabase';
 import type { Template, ProjectType } from '@teammae/types';
 
 export class TemplatesClient {
   async list(type?: ProjectType): Promise<Template[]> {
-    let query = supabase
+    let query = getSupabase()
       .from('templates')
       .select('*')
       .eq('is_public', true)
@@ -20,7 +20,7 @@ export class TemplatesClient {
   }
 
   async get(templateId: string): Promise<Template | null> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('templates')
       .select('*')
       .eq('id', templateId)

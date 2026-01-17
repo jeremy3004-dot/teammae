@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { getSupabase } from '../supabase';
 import type { ProjectFile, FileType } from '@teammae/types';
 import crypto from 'crypto';
 
@@ -14,7 +14,7 @@ export class FilesClient {
       const sizeBytes = Buffer.byteLength(file.content, 'utf8');
 
       // Upsert file (insert or update if exists)
-      const { data, error } = await supabase
+      const { data, error } = await getSupabase()
         .from('files')
         .upsert(
           {
@@ -41,7 +41,7 @@ export class FilesClient {
   }
 
   async get(projectId: string, path: string): Promise<ProjectFile | null> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('files')
       .select('*')
       .eq('project_id', projectId)
@@ -53,7 +53,7 @@ export class FilesClient {
   }
 
   async list(projectId: string): Promise<ProjectFile[]> {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('files')
       .select('*')
       .eq('project_id', projectId)
@@ -64,7 +64,7 @@ export class FilesClient {
   }
 
   async delete(projectId: string, path: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('files')
       .delete()
       .eq('project_id', projectId)
@@ -74,7 +74,7 @@ export class FilesClient {
   }
 
   async deleteAll(projectId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('files')
       .delete()
       .eq('project_id', projectId);

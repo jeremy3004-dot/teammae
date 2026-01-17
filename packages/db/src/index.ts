@@ -1,5 +1,7 @@
-// Re-export supabase client from separate module to avoid circular deps
-export { supabase, getSupabase } from './supabase';
+// Re-export supabase client getter function
+// Note: We only export getSupabase(), not a pre-initialized client
+// This is critical for serverless environments where env vars aren't available at import time
+export { getSupabase } from './supabase';
 
 // Export types
 export * from './types';

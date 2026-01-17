@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm build --filter=@teammae/web",
+  "buildCommand": "pnpm build --filter=@teammae/types && pnpm build --filter=@teammae/db && pnpm build --filter=@teammae/mae-core && pnpm build --filter=@teammae/build-pipeline && pnpm build --filter=@teammae/web",
   "outputDirectory": "apps/web/dist",
   "installCommand": "pnpm install",
   "framework": null

@@ -6,35 +6,42 @@ interface MarketingLayoutProps {
 
 export function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
-    <div className="min-h-screen bg-background text-foreground font-mono">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-      <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <nav className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-accent to-primary rounded-sm flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">M</span>
-              </div>
-              <span className="text-lg font-bold tracking-tight">TeamMAE.ai</span>
+              <span className="mono-heading text-xl font-bold tracking-wider">MAE</span>
             </Link>
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center space-x-8">
-              <Link to="/features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link to="/features" className="mono-heading text-xs text-muted-foreground hover:text-foreground transition-colors">
                 Features
               </Link>
-              <Link to="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link to="/pricing" className="mono-heading text-xs text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
               </Link>
-              <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                About
+              <Link to="/about" className="mono-heading text-xs text-muted-foreground hover:text-foreground transition-colors">
+                About MAE
+              </Link>
+            </div>
+
+            {/* Auth Buttons */}
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/builder"
+                className="hidden md:inline-block mono-heading text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Log in
               </Link>
               <Link
                 to="/builder"
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-sm text-sm font-medium hover:opacity-90 transition-opacity"
+                className="btn-primary px-4 py-2 rounded text-xs"
               >
-                Get Started
+                Get Started <span className="ml-1">&rarr;</span>
               </Link>
             </div>
 
@@ -52,26 +59,13 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
       <main>{children}</main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-card mt-24">
+      <footer className="border-t border-border/50 bg-background mt-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Brand Column */}
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-accent to-primary rounded-sm flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">M</span>
-                </div>
-                <span className="text-lg font-bold">TeamMAE.ai</span>
-              </div>
-              <p className="text-sm text-muted-foreground max-w-sm">
-                Build production-ready web and mobile apps with AI. Beautiful by default, safe by design.
-              </p>
-            </div>
-
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             {/* Product Column */}
             <div>
-              <h3 className="text-sm font-semibold mb-4">Product</h3>
-              <ul className="space-y-2">
+              <h3 className="mono-heading text-xs font-semibold mb-4 text-foreground">Product</h3>
+              <ul className="space-y-3">
                 <li>
                   <Link to="/features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     Features
@@ -83,25 +77,37 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/builder" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    Get Started
+                  <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    About MAE
                   </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Resources Column */}
+            <div>
+              <h3 className="mono-heading text-xs font-semibold mb-4 text-foreground">Resources</h3>
+              <ul className="space-y-3">
+                <li>
+                  <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Docs
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Discord
+                  </a>
                 </li>
               </ul>
             </div>
 
             {/* Company Column */}
             <div>
-              <h3 className="text-sm font-semibold mb-4">Company</h3>
-              <ul className="space-y-2">
-                <li>
-                  <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    About
-                  </Link>
-                </li>
+              <h3 className="mono-heading text-xs font-semibold mb-4 text-foreground">Company</h3>
+              <ul className="space-y-3">
                 <li>
                   <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    GitHub
+                    Blog
                   </a>
                 </li>
                 <li>
@@ -111,11 +117,33 @@ export function MarketingLayout({ children }: MarketingLayoutProps) {
                 </li>
               </ul>
             </div>
+
+            {/* Legal Column */}
+            <div>
+              <h3 className="mono-heading text-xs font-semibold mb-4 text-foreground">Legal</h3>
+              <ul className="space-y-3">
+                <li>
+                  <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Privacy
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    Terms
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <div className="border-t border-border mt-8 pt-8 text-center">
+          {/* Bottom Bar */}
+          <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-2">
+              <span className="mono-heading text-lg font-bold">MAE</span>
+              <span className="text-muted-foreground text-sm">- Master AI Engineer</span>
+            </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 TeamMAE.ai. Built with Claude Code.
+              &copy; 2026 MAE. All rights reserved.
             </p>
           </div>
         </div>

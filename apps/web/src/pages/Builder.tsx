@@ -29,7 +29,7 @@ export function Builder() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isBuilding, setIsBuilding] = useState(false);
-  const [previewHtml] = useState<string>('');
+  const [previewHtml, setPreviewHtml] = useState<string>('');
   const [_currentBuildId, setCurrentBuildId] = useState<string | null>(null);
   const [logs, setLogs] = useState<BuildLog[]>([]);
   const [showLogs, setShowLogs] = useState(false);
@@ -80,9 +80,107 @@ export function Builder() {
     try {
       const files = await filesApi.list(projectId);
       setProjectFiles(files);
+
+      // Generate preview HTML from files
+      if (files.length > 0) {
+        const html = generatePreviewHtml(files);
+        setPreviewHtml(html);
+      }
     } catch (error) {
       console.error('Failed to load project files:', error);
     }
+  };
+
+  /**
+   * Generate a self-contained HTML preview from project files
+   */
+  const generatePreviewHtml = (files: ProjectFile[]): string => {
+    const fileMap = new Map(files.map(f => [f.path, f.content]));
+
+    // Find App.tsx or main component
+    const appContent = fileMap.get('apps/web/src/App.tsx') ||
+                       fileMap.get('src/App.tsx') ||
+                       fileMap.get('App.tsx') || '';
+
+    // Find CSS
+    const cssContent = fileMap.get('apps/web/src/index.css') ||
+                       fileMap.get('src/index.css') ||
+                       fileMap.get('index.css') ||
+                       '@tailwind base;\n@tailwind components;\n@tailwind utilities;';
+
+    // Collect all component files
+    const componentCode: string[] = [];
+    for (const [path, content] of fileMap.entries()) {
+      if ((path.includes('/components/') || path.includes('/pages/')) &&
+          (path.endsWith('.tsx') || path.endsWith('.jsx'))) {
+        // Transform the component to be usable inline
+        const transformed = content
+          .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
+          .replace(/export default /g, 'const _Component = ')
+          .replace(/export /g, '');
+        componentCode.push(`// ${path}\n${transformed}`);
+      }
+    }
+
+    // Transform App.tsx
+    const transformedApp = appContent
+      .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
+      .replace(/export default App;?/g, '')
+      .replace(/export default /g, 'const App = ');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            background: '#0a0a0f',
+            foreground: '#f0f0f5',
+            card: '#12121a',
+            border: '#2a2a3e',
+            primary: '#6366f1',
+            'primary-foreground': '#ffffff',
+            muted: '#1a1a24',
+            'muted-foreground': '#a0a0b0',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ${cssContent.replace(/@tailwind\s+(base|components|utilities);/g, '')}
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    import React, { useState, useEffect, useCallback, useMemo } from 'https://esm.sh/react@18.2.0';
+    import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+
+    // Component definitions
+    ${componentCode.join('\n\n')}
+
+    // App component
+    ${transformedApp}
+
+    // Render
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    } catch (e) {
+      document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red;">Preview Error: ' + e.message + '</div>';
+      console.error('Preview render error:', e);
+    }
+  </script>
+</body>
+</html>`;
   };
 
   const addLog = (level: BuildLog['level'], message: string) => {
@@ -144,16 +242,16 @@ export function Builder() {
 
             const successMsg: Message = {
               role: 'assistant',
-              content: 'Build complete! Your app is ready. Check the Files tab to see the generated code.',
+              content: 'Build complete! Your app is ready. Check the Preview tab to see your app live!',
               timestamp: new Date(),
             };
             setMessages((prev) => [...prev, successMsg]);
 
-            // Load the generated files
+            // Load the generated files and generate preview
             if (currentProjectId) {
               await loadProjectFiles(currentProjectId);
-              // Switch to files tab to show results
-              setRightPaneTab('files');
+              // Switch to preview tab to show results
+              setRightPaneTab('preview');
             }
           } else {
             addLog('error', build.error_message || 'Build failed');

@@ -249,6 +249,9 @@ export default async function handler(
  * Generate code using Claude API with strict JSON output
  */
 async function generateCodeWithClaude(prompt: string): Promise<ClaudeResponse> {
+  console.log('[build] Step 10: Starting Claude API call');
+  const startTime = Date.now();
+
   const systemPrompt = `You are an expert code generator for Vite + React + TypeScript + Tailwind CSS applications.
 
 CRITICAL INSTRUCTIONS:
@@ -295,12 +298,15 @@ REMEMBER: Output ONLY the JSON object. No other text.`;
     }),
   });
 
+  console.log(`[build] Step 11: Claude API responded in ${Date.now() - startTime}ms, status: ${response.status}`);
+
   if (!response.ok) {
     const errorData = await response.text();
     throw new Error(`Claude API error: ${response.status} ${errorData}`);
   }
 
   const data = await response.json();
+  console.log('[build] Step 12: Parsing Claude response');
   const content = data.content[0].text;
 
   // Parse the JSON response

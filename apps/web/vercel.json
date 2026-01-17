@@ -4,6 +4,11 @@
   "buildCommand": "cd ../.. && pnpm turbo build --filter=@teammae/web",
   "outputDirectory": "dist",
   "framework": "vite",
+  "functions": {
+    "api/projects/[id]/build.ts": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/:path((?!api).*)", "destination": "/index.html" }
   ]

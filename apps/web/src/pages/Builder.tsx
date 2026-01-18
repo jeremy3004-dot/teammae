@@ -78,13 +78,18 @@ export function Builder() {
 
   const loadProjectFiles = async (projectId: string) => {
     try {
+      console.log('[Builder] Loading files for project:', projectId);
       const files = await filesApi.list(projectId);
+      console.log('[Builder] Loaded files:', files.length, files.map(f => f.path));
       setProjectFiles(files);
 
       // Generate preview HTML from files
       if (files.length > 0) {
         const html = generatePreviewHtml(files);
+        console.log('[Builder] Generated preview HTML, length:', html.length);
         setPreviewHtml(html);
+      } else {
+        console.log('[Builder] No files to generate preview from');
       }
     } catch (error) {
       console.error('Failed to load project files:', error);
@@ -187,7 +192,7 @@ export function Builder() {
     setLogs((prev) => [...prev, { level, message, timestamp: new Date() }]);
   };
 
-  const startBuildPolling = (buildId: string) => {
+  const startBuildPolling = (buildId: string, projectId: string) => {
     // Clear any existing polling
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
@@ -248,11 +253,9 @@ export function Builder() {
             setMessages((prev) => [...prev, successMsg]);
 
             // Load the generated files and generate preview
-            if (currentProjectId) {
-              await loadProjectFiles(currentProjectId);
-              // Switch to preview tab to show results
-              setRightPaneTab('preview');
-            }
+            await loadProjectFiles(projectId);
+            // Switch to preview tab to show results
+            setRightPaneTab('preview');
           } else {
             addLog('error', build.error_message || 'Build failed');
 
@@ -337,7 +340,7 @@ export function Builder() {
       addLog('info', `Build started with ID: ${result.buildId}`);
 
       // Start polling for build status
-      startBuildPolling(result.buildId);
+      startBuildPolling(result.buildId, effectiveProjectId);
     } catch (error) {
       setIsBuilding(false);
       setBuildSteps([]);

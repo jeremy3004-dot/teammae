@@ -267,18 +267,25 @@ async function generateCodeWithClaude(prompt: string): Promise<ClaudeResponse> {
 OUTPUT FORMAT: Return ONLY valid JSON (no markdown, no code fences):
 {
   "files": {
-    "src/App.tsx": "...",
-    "src/index.css": "...",
-    "src/components/ComponentName.tsx": "..."
+    "src/App.tsx": "code here...",
+    "src/index.css": "css here..."
   },
   "entry": "src/App.tsx"
 }
 
+CRITICAL JSON RULES:
+- All backslashes in code must be escaped as \\\\ (double backslash)
+- All newlines in code must be \\n (escaped)
+- All quotes in code must be escaped as \\"
+- All tabs must be \\t
+- NO raw newlines inside JSON string values
+- NO markdown code fences
+
 REQUIREMENTS:
 - Use React functional components with TypeScript
-- Use Tailwind CSS for all styling
-- Keep it simple but functional
-- Maximum 3-4 components total
+- Use Tailwind CSS for all styling (use className, not inline styles)
+- Keep it simple - maximum 2-3 components
+- Use single quotes in JSX to avoid escaping issues
 
 OUTPUT ONLY THE JSON OBJECT.`;
 
@@ -336,16 +343,23 @@ OUTPUT ONLY THE JSON OBJECT.`;
   } catch (parseError) {
     // Try to fix common JSON issues
     console.log('[build] First parse failed, attempting to fix JSON...');
+    console.log('[build] Parse error:', parseError instanceof Error ? parseError.message : parseError);
+
     try {
+      // More aggressive JSON fixing
+      let fixedContent = content;
+
+      // Fix unescaped backslashes (but not already escaped ones)
+      // This regex finds backslashes not followed by valid escape chars
+      fixedContent = fixedContent.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+
       // Fix unescaped control characters in strings
-      const fixedContent = content
-        .replace(/[\x00-\x1F\x7F]/g, (char) => {
-          // Keep newlines and tabs as escaped versions
-          if (char === '\n') return '\\n';
-          if (char === '\r') return '\\r';
-          if (char === '\t') return '\\t';
-          return ''; // Remove other control characters
-        });
+      fixedContent = fixedContent.replace(/[\x00-\x1F\x7F]/g, (char) => {
+        if (char === '\n') return '\\n';
+        if (char === '\r') return '\\r';
+        if (char === '\t') return '\\t';
+        return ''; // Remove other control characters
+      });
 
       const parsed = JSON.parse(fixedContent);
 
@@ -353,9 +367,12 @@ OUTPUT ONLY THE JSON OBJECT.`;
         throw new Error('Invalid response structure: missing files object');
       }
 
+      console.log('[build] JSON fixed and parsed successfully');
       return parsed;
     } catch (secondError) {
-      console.error('Failed to parse Claude response even after fixes:', content.substring(0, 500));
+      console.error('[build] Failed to parse Claude response even after fixes');
+      console.error('[build] Content start:', content.substring(0, 300));
+      console.error('[build] Content end:', content.substring(content.length - 300));
       throw new Error(
         `Claude returned invalid JSON: ${parseError instanceof Error ? parseError.message : 'Parse error'}`
       );

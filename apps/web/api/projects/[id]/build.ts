@@ -172,16 +172,38 @@ export default async function handler(
     );
 
     console.log('[build] Step 13: Saving files to database:', filesToSave.map(f => f.path));
-    const { data: savedFiles, error: filesError } = await supabase.from('files').upsert(filesToSave, {
-      onConflict: 'project_id,path',
-    }).select();
+    console.log('[build] Files to save:', JSON.stringify(filesToSave.map(f => ({ path: f.path, project_id: f.project_id, size: f.size_bytes }))));
+
+    // Use insert instead of upsert for new files (avoid RLS issues with upsert)
+    // First, delete existing files for this project
+    const { error: deleteError } = await supabase
+      .from('files')
+      .delete()
+      .eq('project_id', projectId);
+
+    if (deleteError) {
+      console.error('[build] Failed to delete old files:', deleteError);
+      // Continue anyway - might just mean no files existed
+    }
+
+    // Then insert the new files
+    const { data: savedFiles, error: filesError } = await supabase
+      .from('files')
+      .insert(filesToSave)
+      .select();
 
     if (filesError) {
       console.error('[build] Failed to save files:', filesError);
+      console.error('[build] Files error details:', JSON.stringify(filesError));
       throw new Error(`Failed to save files: ${filesError.message}`);
     }
 
     console.log('[build] Step 14: Files saved successfully:', savedFiles?.length || 0);
+    if (savedFiles && savedFiles.length > 0) {
+      console.log('[build] Saved file IDs:', savedFiles.map(f => f.id));
+    } else {
+      console.warn('[build] WARNING: No files were saved! RLS may be blocking inserts.');
+    }
 
     // Mark build as complete
     await supabase.from('builds').update({

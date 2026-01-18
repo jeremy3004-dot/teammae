@@ -249,35 +249,28 @@ export default async function handler(
  * Generate code using Claude API with strict JSON output
  */
 async function generateCodeWithClaude(prompt: string): Promise<ClaudeResponse> {
-  console.log('[build] Step 10: Starting Claude API call with claude-sonnet-4-20250514');
+  console.log('[build] Step 10: Starting Claude API call with claude-3-5-haiku');
   const startTime = Date.now();
 
-  const systemPrompt = `You are an expert code generator for Vite + React + TypeScript + Tailwind CSS applications.
+  const systemPrompt = `You are an expert code generator. Generate a React + Tailwind CSS application.
 
-CRITICAL INSTRUCTIONS:
-1. You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations.
-2. The JSON must have this exact structure:
+OUTPUT FORMAT: Return ONLY valid JSON (no markdown, no code fences):
 {
   "files": {
-    "path/to/file": "file contents",
-    ...
+    "src/App.tsx": "...",
+    "src/index.css": "...",
+    "src/components/ComponentName.tsx": "..."
   },
-  "entry": "apps/web/src/main.tsx"
+  "entry": "src/App.tsx"
 }
 
-3. Generate a complete, working Vite + React app with:
-   - apps/web/src/main.tsx (entry point)
-   - apps/web/src/App.tsx (main component)
-   - apps/web/src/index.css (global styles with Tailwind directives)
-   - apps/web/index.html (with <div id="root"></div>)
-   - Additional components as needed in apps/web/src/components/
+REQUIREMENTS:
+- Use React functional components with TypeScript
+- Use Tailwind CSS for all styling
+- Keep it simple but functional
+- Maximum 3-4 components total
 
-4. Use TypeScript (.tsx), React 18, and Tailwind CSS utility classes
-5. Make it functional and production-ready
-6. Include proper imports and exports
-7. Use modern React patterns (hooks, functional components)
-
-REMEMBER: Output ONLY the JSON object. No other text.`;
+OUTPUT ONLY THE JSON OBJECT.`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -287,8 +280,8 @@ REMEMBER: Output ONLY the JSON object. No other text.`;
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8000,
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 4000,
       messages: [
         {
           role: 'user',

@@ -174,9 +174,19 @@ export default async function handler(
     console.log('[build] Step 13: Saving files to database:', filesToSave.map(f => f.path));
     console.log('[build] Files to save:', JSON.stringify(filesToSave.map(f => ({ path: f.path, project_id: f.project_id, size: f.size_bytes }))));
 
-    // Use insert instead of upsert for new files (avoid RLS issues with upsert)
+    // Use service role key if available to bypass RLS, otherwise use user token
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let dbClient = supabase;
+
+    if (serviceRoleKey) {
+      console.log('[build] Using service role key for file operations');
+      dbClient = createClient(supabaseUrl, serviceRoleKey);
+    } else {
+      console.log('[build] No service role key, using user token (RLS applies)');
+    }
+
     // First, delete existing files for this project
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await dbClient
       .from('files')
       .delete()
       .eq('project_id', projectId);
@@ -187,7 +197,7 @@ export default async function handler(
     }
 
     // Then insert the new files
-    const { data: savedFiles, error: filesError } = await supabase
+    const { data: savedFiles, error: filesError } = await dbClient
       .from('files')
       .insert(filesToSave)
       .select();
@@ -198,12 +208,29 @@ export default async function handler(
       throw new Error(`Failed to save files: ${filesError.message}`);
     }
 
-    console.log('[build] Step 14: Files saved successfully:', savedFiles?.length || 0);
-    if (savedFiles && savedFiles.length > 0) {
-      console.log('[build] Saved file IDs:', savedFiles.map(f => f.id));
-    } else {
-      console.warn('[build] WARNING: No files were saved! RLS may be blocking inserts.');
+    const filesSaved = savedFiles?.length || 0;
+    console.log('[build] Step 14: Files saved successfully:', filesSaved);
+
+    if (filesSaved === 0) {
+      console.error('[build] CRITICAL: No files were saved! This should not happen.');
+      console.error('[build] Insert returned no error but also no rows.');
+      console.error('[build] This typically means RLS blocked the insert silently.');
+      console.error('[build] Project ID:', projectId);
+      console.error('[build] User ID:', userId);
+
+      // Verify the project exists and user owns it
+      const { data: verifyProject } = await dbClient
+        .from('projects')
+        .select('id, user_id')
+        .eq('id', projectId)
+        .single();
+
+      console.error('[build] Project verification:', verifyProject);
+
+      throw new Error('Files were not saved - RLS may be blocking inserts. Add SUPABASE_SERVICE_ROLE_KEY to environment variables.');
     }
+
+    console.log('[build] Saved file IDs:', savedFiles.map((f: { id: string }) => f.id));
 
     // Mark build as complete
     await supabase.from('builds').update({
@@ -221,6 +248,7 @@ export default async function handler(
       buildId,
       projectId,
       filesGenerated: filesToSave.length,
+      filesSaved: filesSaved,
       entryPoint: generatedFiles.entry,
     });
   } catch (error) {

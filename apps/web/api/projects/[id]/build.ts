@@ -286,30 +286,24 @@ async function generateCodeWithClaude(prompt: string): Promise<ClaudeResponse> {
 
   const systemPrompt = `You are an expert code generator. Generate a React + Tailwind CSS application.
 
-OUTPUT FORMAT: Return ONLY valid JSON (no markdown, no code fences):
-{
-  "files": {
-    "src/App.tsx": "code here...",
-    "src/index.css": "css here..."
-  },
-  "entry": "src/App.tsx"
-}
+OUTPUT FORMAT: Return files using this EXACT format with file markers:
 
-CRITICAL JSON RULES:
-- All backslashes in code must be escaped as \\\\ (double backslash)
-- All newlines in code must be \\n (escaped)
-- All quotes in code must be escaped as \\"
-- All tabs must be \\t
-- NO raw newlines inside JSON string values
-- NO markdown code fences
+===FILE:src/App.tsx===
+(your App.tsx code here)
+===END_FILE===
+
+===FILE:src/index.css===
+(your CSS code here)
+===END_FILE===
 
 REQUIREMENTS:
 - Use React functional components with TypeScript
-- Use Tailwind CSS for all styling (use className, not inline styles)
-- Keep it simple - maximum 2-3 components
-- Use single quotes in JSX to avoid escaping issues
+- Use Tailwind CSS for all styling (className, not inline styles)
+- Keep it simple - maximum 2-3 files total
+- ALWAYS include src/App.tsx as the main component
+- Include src/index.css with basic Tailwind styles
 
-OUTPUT ONLY THE JSON OBJECT.`;
+IMPORTANT: Use the exact file markers shown above. Each file starts with ===FILE:path=== and ends with ===END_FILE===`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -339,65 +333,29 @@ OUTPUT ONLY THE JSON OBJECT.`;
 
   const data = await response.json();
   console.log('[build] Step 12: Parsing Claude response');
-  let content = data.content[0].text;
+  const content = data.content[0].text;
 
-  // Clean up the response - remove markdown code fences if present
-  content = content.trim();
-  if (content.startsWith('```json')) {
-    content = content.slice(7);
-  } else if (content.startsWith('```')) {
-    content = content.slice(3);
+  // Parse the file marker format: ===FILE:path=== ... ===END_FILE===
+  const files: Record<string, string> = {};
+  const fileRegex = /===FILE:([^=]+)===([\s\S]*?)===END_FILE===/g;
+
+  let match;
+  while ((match = fileRegex.exec(content)) !== null) {
+    const filePath = match[1].trim();
+    const fileContent = match[2].trim();
+    files[filePath] = fileContent;
+    console.log(`[build] Extracted file: ${filePath} (${fileContent.length} chars)`);
   }
-  if (content.endsWith('```')) {
-    content = content.slice(0, -3);
+
+  if (Object.keys(files).length === 0) {
+    console.error('[build] No files found in response. Content:', content.substring(0, 500));
+    throw new Error('Claude did not return any files in the expected format');
   }
-  content = content.trim();
 
-  // Parse the JSON response
-  try {
-    const parsed = JSON.parse(content);
+  console.log(`[build] Successfully parsed ${Object.keys(files).length} files`);
 
-    if (!parsed.files || typeof parsed.files !== 'object') {
-      throw new Error('Invalid response structure: missing files object');
-    }
-
-    return parsed;
-  } catch (parseError) {
-    // Try to fix common JSON issues
-    console.log('[build] First parse failed, attempting to fix JSON...');
-    console.log('[build] Parse error:', parseError instanceof Error ? parseError.message : parseError);
-
-    try {
-      // More aggressive JSON fixing
-      let fixedContent = content;
-
-      // Fix unescaped backslashes (but not already escaped ones)
-      // This regex finds backslashes not followed by valid escape chars
-      fixedContent = fixedContent.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
-
-      // Fix unescaped control characters in strings
-      fixedContent = fixedContent.replace(/[\x00-\x1F\x7F]/g, (char) => {
-        if (char === '\n') return '\\n';
-        if (char === '\r') return '\\r';
-        if (char === '\t') return '\\t';
-        return ''; // Remove other control characters
-      });
-
-      const parsed = JSON.parse(fixedContent);
-
-      if (!parsed.files || typeof parsed.files !== 'object') {
-        throw new Error('Invalid response structure: missing files object');
-      }
-
-      console.log('[build] JSON fixed and parsed successfully');
-      return parsed;
-    } catch (secondError) {
-      console.error('[build] Failed to parse Claude response even after fixes');
-      console.error('[build] Content start:', content.substring(0, 300));
-      console.error('[build] Content end:', content.substring(content.length - 300));
-      throw new Error(
-        `Claude returned invalid JSON: ${parseError instanceof Error ? parseError.message : 'Parse error'}`
-      );
-    }
-  }
+  return {
+    files,
+    entry: 'src/App.tsx',
+  };
 }

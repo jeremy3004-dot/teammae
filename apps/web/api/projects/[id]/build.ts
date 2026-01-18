@@ -178,11 +178,24 @@ export default async function handler(
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     let dbClient = supabase;
 
+    console.log('[build] Service role key check:', {
+      hasKey: !!serviceRoleKey,
+      keyPrefix: serviceRoleKey ? serviceRoleKey.substring(0, 20) + '...' : 'none',
+      keyLength: serviceRoleKey?.length || 0,
+    });
+
     if (serviceRoleKey) {
-      console.log('[build] Using service role key for file operations');
-      dbClient = createClient(supabaseUrl, serviceRoleKey);
+      console.log('[build] Creating service role client to bypass RLS');
+      // Service role key bypasses RLS - must create fresh client with it
+      dbClient = createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
     } else {
-      console.log('[build] No service role key, using user token (RLS applies)');
+      console.log('[build] WARNING: No service role key found! RLS will block inserts.');
+      console.log('[build] Add SUPABASE_SERVICE_ROLE_KEY to Vercel environment variables');
     }
 
     // First, delete existing files for this project

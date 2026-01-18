@@ -160,18 +160,28 @@ export default async function handler(
         project_id: projectId,
         path,
         content,
-        file_type: path.endsWith('.tsx') || path.endsWith('.ts') ? 'typescript' :
-                   path.endsWith('.css') ? 'css' :
-                   path.endsWith('.html') ? 'html' : 'other',
+        // file_type must match DB constraint: 'component', 'page', 'config', 'asset', 'util', 'style', 'other'
+        file_type: path.includes('/components/') ? 'component' :
+                   path.includes('/pages/') ? 'page' :
+                   path.endsWith('.css') ? 'style' :
+                   path.endsWith('.json') ? 'config' : 'other',
         size_bytes: content.length,
         checksum: '',
         version: 1,
       })
     );
 
-    await supabase.from('files').upsert(filesToSave, {
+    console.log('[build] Step 13: Saving files to database:', filesToSave.map(f => f.path));
+    const { data: savedFiles, error: filesError } = await supabase.from('files').upsert(filesToSave, {
       onConflict: 'project_id,path',
-    });
+    }).select();
+
+    if (filesError) {
+      console.error('[build] Failed to save files:', filesError);
+      throw new Error(`Failed to save files: ${filesError.message}`);
+    }
+
+    console.log('[build] Step 14: Files saved successfully:', savedFiles?.length || 0);
 
     // Mark build as complete
     await supabase.from('builds').update({

@@ -249,7 +249,7 @@ export default async function handler(
  * Generate code using Claude API with strict JSON output
  */
 async function generateCodeWithClaude(prompt: string): Promise<ClaudeResponse> {
-  console.log('[build] Step 10: Starting Claude API call with claude-3-5-haiku');
+  console.log('[build] Step 10: Starting Claude API call with claude-3-haiku-20240307');
   const startTime = Date.now();
 
   const systemPrompt = `You are an expert code generator. Generate a React + Tailwind CSS application.
@@ -280,7 +280,7 @@ OUTPUT ONLY THE JSON OBJECT.`;
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 4000,
       messages: [
         {

@@ -310,7 +310,19 @@ OUTPUT ONLY THE JSON OBJECT.`;
 
   const data = await response.json();
   console.log('[build] Step 12: Parsing Claude response');
-  const content = data.content[0].text;
+  let content = data.content[0].text;
+
+  // Clean up the response - remove markdown code fences if present
+  content = content.trim();
+  if (content.startsWith('```json')) {
+    content = content.slice(7);
+  } else if (content.startsWith('```')) {
+    content = content.slice(3);
+  }
+  if (content.endsWith('```')) {
+    content = content.slice(0, -3);
+  }
+  content = content.trim();
 
   // Parse the JSON response
   try {
@@ -322,9 +334,31 @@ OUTPUT ONLY THE JSON OBJECT.`;
 
     return parsed;
   } catch (parseError) {
-    console.error('Failed to parse Claude response:', content);
-    throw new Error(
-      `Claude returned invalid JSON: ${parseError instanceof Error ? parseError.message : 'Parse error'}`
-    );
+    // Try to fix common JSON issues
+    console.log('[build] First parse failed, attempting to fix JSON...');
+    try {
+      // Fix unescaped control characters in strings
+      const fixedContent = content
+        .replace(/[\x00-\x1F\x7F]/g, (char) => {
+          // Keep newlines and tabs as escaped versions
+          if (char === '\n') return '\\n';
+          if (char === '\r') return '\\r';
+          if (char === '\t') return '\\t';
+          return ''; // Remove other control characters
+        });
+
+      const parsed = JSON.parse(fixedContent);
+
+      if (!parsed.files || typeof parsed.files !== 'object') {
+        throw new Error('Invalid response structure: missing files object');
+      }
+
+      return parsed;
+    } catch (secondError) {
+      console.error('Failed to parse Claude response even after fixes:', content.substring(0, 500));
+      throw new Error(
+        `Claude returned invalid JSON: ${parseError instanceof Error ? parseError.message : 'Parse error'}`
+      );
+    }
   }
 }

@@ -21,8 +21,9 @@ export async function verifyAuth(req: VercelRequest): Promise<string> {
   // Create Supabase client and verify token directly
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-  // Pass token directly to getUser for proper type inference
-  const { data, error } = await supabase.auth.getUser(token);
+  // Pass token directly to getUser - use type assertion due to TypeScript 5.9 compatibility
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.auth as any).getUser(token);
 
   if (error || !data.user) {
     throw new Error('Invalid or expired token');

@@ -36,8 +36,9 @@ export default async function handler(
       }
     });
 
-    // Verify auth - pass token directly to getUser for proper TypeScript types
-    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    // Verify auth - use type assertion to call getUser with token
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: authData, error: authError } = await (supabase.auth as any).getUser(token);
 
     if (authError || !authData.user) {
       return res.status(401).json({ error: 'Invalid or expired token' });

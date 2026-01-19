@@ -28,8 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Verify token with Supabase - pass token directly to getUser
-    const { data, error } = await supabase.auth.getUser(token);
+    // Verify token with Supabase - use type assertion to call getUser with token
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.auth as any).getUser(token);
 
     if (error || !data.user) {
       return res.status(401).json({

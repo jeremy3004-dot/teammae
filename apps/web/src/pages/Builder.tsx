@@ -50,6 +50,7 @@ export function Builder() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [previewErrors, setPreviewErrors] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -288,6 +289,15 @@ export function Builder() {
     previewStatus: previewHtml ? `Generated (${previewHtml.length} chars)` : 'Not generated',
     logs,
   });
+
+  // Handle preview errors from iframe
+  const handlePreviewError = (error: string) => {
+    setPreviewErrors(prev => {
+      // Avoid duplicates
+      if (prev.includes(error)) return prev;
+      return [...prev, error].slice(-20); // Keep last 20 errors
+    });
+  };
 
   // Copy helper with feedback
   const copyToClipboard = async (text: string, section: string) => {
@@ -727,9 +737,9 @@ ${projectFiles.map(f => `${f.path} (${f.size_bytes} bytes)`).join('\n') || 'No f
                 : 'text-[#666] hover:text-[#a0a0b0] bg-[#0a0a0f]'
             }`}
           >
-            Debug {logs.filter(l => l.level === 'error').length > 0 && (
+            Debug {(logs.filter(l => l.level === 'error').length + previewErrors.length) > 0 && (
               <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                {logs.filter(l => l.level === 'error').length}
+                {logs.filter(l => l.level === 'error').length + previewErrors.length}
               </span>
             )}
           </button>
@@ -855,7 +865,7 @@ ${projectFiles.map(f => `${f.path} (${f.size_bytes} bytes)`).join('\n') || 'No f
             // Preview Tab
             <div className="h-full">
               {previewHtml ? (
-                <PreviewPane html={previewHtml} />
+                <PreviewPane html={previewHtml} onError={handlePreviewError} />
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center">
                   <div className="w-20 h-20 rounded-full bg-[#1a1a24] flex items-center justify-center mb-6">
@@ -951,6 +961,40 @@ ${projectFiles.map(f => `${f.path} (${f.size_bytes} bytes)`).join('\n') || 'No f
                   <pre className="p-3 text-sm font-mono text-red-400 whitespace-pre-wrap break-all">
                     {lastError}
                   </pre>
+                </div>
+              )}
+
+              {/* Preview Errors Section */}
+              {previewErrors.length > 0 && (
+                <div className="mb-4 bg-[#1a1a24] border border-orange-500/30 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-orange-500/10 border-b border-orange-500/30">
+                    <span className="text-xs font-mono font-semibold text-orange-400 uppercase">
+                      Preview Errors ({previewErrors.length})
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPreviewErrors([])}
+                        className="text-xs text-[#555] hover:text-white transition-colors"
+                      >
+                        Clear
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(previewErrors.join('\n'), 'preview-errors')}
+                        className="text-xs text-[#555] hover:text-white transition-colors"
+                      >
+                        {copiedSection === 'preview-errors' ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto">
+                    <div className="divide-y divide-orange-500/20">
+                      {previewErrors.map((error, idx) => (
+                        <div key={idx} className="px-3 py-2 text-xs font-mono text-orange-300 break-all">
+                          {error}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 

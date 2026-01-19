@@ -72,7 +72,7 @@ export function PreviewPane({ html, onError }: PreviewPaneProps) {
           </button>
         )}
       </div>
-      <div className="flex-1 relative bg-white">
+      <div className="flex-1 relative bg-white" style={{ minHeight: 0 }}>
         {!html ? (
           <div className="flex items-center justify-center h-full text-gray-400">
             <div className="text-center">
@@ -98,7 +98,7 @@ export function PreviewPane({ html, onError }: PreviewPaneProps) {
             key={iframeKey}
             ref={iframeRef}
             title="App Preview"
-            className="w-full h-full border-0"
+            className="absolute inset-0 w-full h-full border-0"
             srcDoc={htmlWithErrorCapture}
           />
         )}

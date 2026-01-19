@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 interface PreviewPaneProps {
   html: string;
@@ -8,55 +8,13 @@ interface PreviewPaneProps {
 export function PreviewPane({ html }: PreviewPaneProps) {
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [blobUrl, setBlobUrl] = useState<string>('');
-  const [isLoaded, setIsLoaded] = useState(false);
-  const previousUrlRef = useRef<string>('');
 
   const handleRefresh = () => {
-    setIsLoaded(false);
     setIframeKey((prev) => prev + 1);
   };
 
-  // Use Blob URL instead of data URI or srcDoc
-  // Blob URLs have better browser support and no length limits
-  useEffect(() => {
-    if (!html) {
-      setBlobUrl('');
-      return;
-    }
-
-    console.log('[PreviewPane] Creating blob URL, html length:', html.length);
-    console.log('[PreviewPane] HTML preview (first 500 chars):', html.substring(0, 500));
-
-    // Create blob from HTML
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    console.log('[PreviewPane] Created blob URL:', url);
-
-    // Store previous URL for cleanup
-    if (previousUrlRef.current) {
-      URL.revokeObjectURL(previousUrlRef.current);
-    }
-    previousUrlRef.current = url;
-
-    setBlobUrl(url);
-    setIsLoaded(false);
-
-    // Only cleanup on unmount, not on html change (to prevent race conditions)
-    return () => {
-      // Delay cleanup to ensure iframe has loaded
-      setTimeout(() => {
-        if (previousUrlRef.current === url) {
-          URL.revokeObjectURL(url);
-          previousUrlRef.current = '';
-        }
-      }, 1000);
-    };
-  }, [html, iframeKey]);
-
   const handleIframeLoad = () => {
     console.log('[PreviewPane] Iframe loaded successfully');
-    setIsLoaded(true);
   };
 
   const handleIframeError = () => {
@@ -97,20 +55,17 @@ export function PreviewPane({ html }: PreviewPaneProps) {
               <p className="text-xs text-gray-400 mt-1">Start building to see your app</p>
             </div>
           </div>
-        ) : blobUrl ? (
+        ) : (
           <iframe
             key={iframeKey}
             ref={iframeRef}
             title="App Preview"
             className="absolute inset-0 w-full h-full border-0"
-            src={blobUrl}
+            srcDoc={html}
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
             onLoad={handleIframeLoad}
             onError={handleIframeError}
           />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full"></div>
-          </div>
         )}
       </div>
     </div>

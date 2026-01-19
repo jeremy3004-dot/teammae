@@ -1,4 +1,4 @@
-import { Sandpack } from '@codesandbox/sandpack-react';
+import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 
 interface ProjectFile {
   path: string;
@@ -77,32 +77,33 @@ export function LivePreviewPane({ files }: LivePreviewPaneProps) {
 
   // Log files being passed to Sandpack for debugging
   console.log('[LivePreviewPane] Files:', Object.keys(sandpackFiles));
+  console.log('[LivePreviewPane] App content preview:', sandpackFiles['/App.jsx']?.substring(0, 200));
 
   return (
-    <div className="h-full w-full bg-[#1a1a2e]">
-      <Sandpack
+    <div className="h-full w-full">
+      <SandpackProvider
         template="react"
         theme="dark"
         files={sandpackFiles}
-        options={{
-          showNavigator: false,
-          showTabs: false,
-          showLineNumbers: false,
-          editorHeight: 0,
-          editorWidthPercentage: 0,
-          showConsole: false,
-          showConsoleButton: false,
-          externalResources: [
-            'https://cdn.tailwindcss.com',
-          ],
-        }}
         customSetup={{
           dependencies: {
             'react': '^18.2.0',
             'react-dom': '^18.2.0',
           },
         }}
-      />
+        options={{
+          externalResources: [
+            'https://cdn.tailwindcss.com',
+          ],
+        }}
+      >
+        <SandpackPreview
+          style={{ height: '100%', width: '100%' }}
+          showNavigator={false}
+          showRefreshButton={true}
+          showOpenInCodeSandbox={false}
+        />
+      </SandpackProvider>
     </div>
   );
 }

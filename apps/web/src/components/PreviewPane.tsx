@@ -1,25 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 interface PreviewPaneProps {
   html: string;
 }
 
 export function PreviewPane({ html }: PreviewPaneProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
-
-  useEffect(() => {
-    if (html && iframeRef.current) {
-      const iframe = iframeRef.current;
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-
-      if (doc) {
-        doc.open();
-        doc.write(html);
-        doc.close();
-      }
-    }
-  }, [html]);
 
   const handleRefresh = () => {
     setIframeKey((prev) => prev + 1);
@@ -62,10 +48,10 @@ export function PreviewPane({ html }: PreviewPaneProps) {
         ) : (
           <iframe
             key={iframeKey}
-            ref={iframeRef}
             title="App Preview"
             className="w-full h-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms"
+            srcDoc={html}
+            sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
           />
         )}
       </div>

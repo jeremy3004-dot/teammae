@@ -51,7 +51,6 @@ export function PreviewPane({ html }: PreviewPaneProps) {
             title="App Preview"
             className="w-full h-full border-0"
             srcDoc={html}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
           />
         )}
       </div>

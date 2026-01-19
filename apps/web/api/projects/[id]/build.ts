@@ -324,29 +324,43 @@ export default async function handler(
  * Generate code using Claude API with strict JSON output
  */
 async function generateCodeWithClaude(prompt: string): Promise<ClaudeResponse> {
-  console.log('[build] Step 10: Starting Claude API call with claude-3-haiku-20240307');
+  console.log('[build] Step 10: Starting Claude API call with claude-sonnet-4-20250514');
   const startTime = Date.now();
 
-  const systemPrompt = `You are an expert code generator. Generate a React + Tailwind CSS application.
+  const systemPrompt = `You are an expert React code generator. Generate a complete, working React + Tailwind CSS application.
 
-OUTPUT FORMAT: Return files using this EXACT format with file markers:
+OUTPUT FORMAT - CRITICAL: You MUST use this EXACT format with file markers:
 
 ===FILE:src/App.tsx===
-(your App.tsx code here)
+import React from 'react';
+
+function App() {
+  return (
+    <div>Your content here</div>
+  );
+}
+
+export default App;
 ===END_FILE===
 
 ===FILE:src/index.css===
-(your CSS code here)
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 ===END_FILE===
 
 REQUIREMENTS:
-- Use React functional components with TypeScript
-- Use Tailwind CSS for all styling (className, not inline styles)
-- Keep it simple - maximum 2-3 files total
-- ALWAYS include src/App.tsx as the main component
-- Include src/index.css with basic Tailwind styles
+1. Use React functional components (NO TypeScript types - just plain JavaScript/JSX)
+2. Use Tailwind CSS classes for ALL styling
+3. Generate COMPLETE, working code - no placeholders or "..."
+4. Keep it simple - just src/App.tsx and src/index.css
+5. Make sure ALL JSX tags are properly closed
+6. Include the default export at the end of App.tsx
 
-IMPORTANT: Use the exact file markers shown above. Each file starts with ===FILE:path=== and ends with ===END_FILE===`;
+IMPORTANT:
+- Start each file with ===FILE:path===
+- End each file with ===END_FILE===
+- Generate complete, runnable code`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -356,12 +370,12 @@ IMPORTANT: Use the exact file markers shown above. Each file starts with ===FILE
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 4000,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
       messages: [
         {
           role: 'user',
-          content: `${systemPrompt}\n\nUser request: ${prompt}`,
+          content: `${systemPrompt}\n\nBuild this: ${prompt}`,
         },
       ],
     }),

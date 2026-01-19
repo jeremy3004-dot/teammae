@@ -213,7 +213,10 @@ export function Builder() {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin><\/script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin><\/script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
   <script>
     tailwind.config = {
       theme: {
@@ -231,7 +234,7 @@ export function Builder() {
         }
       }
     }
-  </script>
+  <\/script>
   <style>
     ${cssContent.replace(/@tailwind\s+(base|components|utilities);/g, '')}
     body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
@@ -239,9 +242,8 @@ export function Builder() {
 </head>
 <body>
   <div id="root"></div>
-  <script type="module">
-    import React, { useState, useEffect, useCallback, useMemo } from 'https://esm.sh/react@18.2.0';
-    import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
     // Component definitions
     ${componentCode.join('\n\n')}
@@ -259,12 +261,12 @@ export function Builder() {
         throw new Error('App component is not defined. Check file paths.');
       }
       const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(App));
+      root.render(<App />);
     } catch (e) {
       document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;"><strong>Preview Error:</strong><br/>' + e.message + '<br/><br/><small>Check browser console for details</small></div>';
       console.error('Preview render error:', e);
     }
-  </script>
+  <\/script>
 </body>
 </html>`;
   };

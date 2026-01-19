@@ -208,93 +208,148 @@ export function Builder() {
       .replace(/\s+as\s+\w+/g, '') // Type assertions: as string
       .replace(/:\s*(string|number|boolean|any|void|null|undefined|never)(\[\])?/g, ''); // Simple type annotations
 
-    // Build live React preview with CDN dependencies
-    // Using unpkg.com which is very reliable
+    // Static HTML preview showing generated files
+    // Live React preview requires external bundler - showing code overview instead
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"><\/script>
   <style>
-    ${cssContent.replace(/@tailwind\s+(base|components|utilities);/g, '')}
-    /* Loading state */
-    .mae-loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      font-family: system-ui, sans-serif;
-    }
-    .mae-loading .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .mae-error {
+      min-height: 100vh;
       padding: 20px;
-      background: #fee;
-      border: 1px solid #f00;
-      border-radius: 8px;
-      margin: 20px;
-      font-family: monospace;
-      white-space: pre-wrap;
     }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .header {
+      background: #1a1a2e;
+      color: white;
+      padding: 20px 24px;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .badge {
+      background: #22c55e;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .content {
+      background: white;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .info-bar {
+      padding: 16px 24px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .info-item strong { color: #334155; }
+    .files-section { padding: 24px; }
+    .file-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .file-card:last-child { margin-bottom: 0; }
+    .file-header {
+      background: #1e293b;
+      color: #f1f5f9;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Monaco', 'Menlo', monospace;
+      display: flex;
+      justify-between;
+      align-items: center;
+    }
+    .file-size {
+      color: #94a3b8;
+      font-weight: 400;
+    }
+    .file-content {
+      padding: 16px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 350px;
+      overflow-y: auto;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .file-content::-webkit-scrollbar { width: 8px; }
+    .file-content::-webkit-scrollbar-track { background: #1e293b; }
+    .file-content::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    .truncated {
+      color: #94a3b8;
+      font-style: italic;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #334155;
+    }
+    ${cssContent.replace(/@tailwind\s+(base|components|utilities);/g, '')}
   </style>
 </head>
 <body>
-  <div id="root">
-    <div class="mae-loading">
-      <div class="spinner"></div>
-      <p style="margin-top: 16px;">Loading preview...</p>
+  <div class="container">
+    <div class="header">
+      <h1>MAE Preview</h1>
+      <span class="badge">Build Complete</span>
+    </div>
+    <div class="content">
+      <div class="info-bar">
+        <div class="info-item">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <strong>${files.length}</strong> files generated
+        </div>
+        <div class="info-item">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V9c0-2-1-3-3-3h-4l-2-2H7c-2 0-3 1-3 3z"/>
+          </svg>
+          <strong>${Math.round(files.reduce((sum, f) => sum + f.size_bytes, 0) / 1024)}</strong> KB total
+        </div>
+      </div>
+      <div class="files-section">
+        ${files.map(f => `
+          <div class="file-card">
+            <div class="file-header">
+              <span>${f.path}</span>
+              <span class="file-size">${(f.size_bytes / 1024).toFixed(1)} KB</span>
+            </div>
+            <div class="file-content">${f.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 3000)}${f.content.length > 3000 ? '<div class="truncated">... truncated (showing first 3KB of ' + (f.size_bytes / 1024).toFixed(1) + ' KB)</div>' : ''}</div>
+          </div>
+        `).join('')}
+      </div>
     </div>
   </div>
-
-  <!-- React 18 UMD builds from unpkg -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
-  <!-- Babel for JSX transformation -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-
-  <script type="text/babel" data-presets="react">
-    // Make React hooks available globally
-    const { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext } = React;
-
-    try {
-      // Component code
-      ${componentCode.join('\n\n')}
-
-      // App code
-      ${transformedApp}
-
-      // Render
-      const container = document.getElementById('root');
-      const root = ReactDOM.createRoot(container);
-      root.render(<App />);
-    } catch (err) {
-      console.error('Preview render error:', err);
-      document.getElementById('root').innerHTML = '<div class="mae-error">Error: ' + err.message + '</div>';
-    }
-  <\/script>
-
-  <script>
-    // Fallback timeout - if nothing renders in 5s, show error
-    setTimeout(() => {
-      const root = document.getElementById('root');
-      if (root && root.querySelector('.mae-loading')) {
-        root.innerHTML = '<div class="mae-error">Preview failed to load. Scripts may be blocked or there was a syntax error. Check the Debug tab for details.</div>';
-      }
-    }, 8000);
-  <\/script>
 </body>
 </html>`;
   };

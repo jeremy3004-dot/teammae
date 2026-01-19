@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PreviewPane } from '../components/PreviewPane';
+import { LivePreviewPane } from '../components/LivePreviewPane';
 import { LogsDrawer } from '../components/LogsDrawer';
 import { buildsApi, filesApi, type BuildLog as ApiBuildLog, type ProjectFile } from '../lib/api';
 
@@ -944,10 +944,10 @@ ${projectFiles.map(f => `${f.path} (${f.size_bytes} bytes)`).join('\n') || 'No f
               )}
             </div>
           ) : rightPaneTab === 'preview' ? (
-            // Preview Tab
+            // Preview Tab - Live React Preview with Sandpack
             <div className="h-full">
-              {previewHtml ? (
-                <PreviewPane html={previewHtml} onError={handlePreviewError} />
+              {projectFiles.length > 0 ? (
+                <LivePreviewPane files={projectFiles} />
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center">
                   <div className="w-20 h-20 rounded-full bg-[#1a1a24] flex items-center justify-center mb-6">
@@ -957,7 +957,7 @@ ${projectFiles.map(f => `${f.path} (${f.size_bytes} bytes)`).join('\n') || 'No f
                   </div>
                   <h3 className="text-lg font-mono font-semibold text-[#f0f0f5] mb-2">Preview</h3>
                   <p className="text-sm text-[#555] max-w-xs">
-                    Preview functionality coming soon. For now, check the Files tab to see generated code.
+                    Build an app to see it running live here!
                   </p>
                 </div>
               )}

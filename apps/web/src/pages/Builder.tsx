@@ -37,6 +37,7 @@ export function Builder() {
   const [buildSteps, setBuildSteps] = useState<BuildStep[]>([]);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [rightPaneTab, setRightPaneTab] = useState<RightPaneTab>('preview');
+  const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -717,13 +718,19 @@ export function Builder() {
                   </p>
                 </div>
               ) : (
-                // File tree
+                <>
+                {/* File tree */}
                 <div className="p-4">
                   <div className="space-y-1">
                     {projectFiles.map((file) => (
                       <div
                         key={file.id}
-                        className="flex items-center gap-2 px-3 py-2 bg-[#1a1a24] hover:bg-[#2a2a3e] border border-[#2a2a3e] rounded-lg transition-colors cursor-pointer group"
+                        onClick={() => setSelectedFile(selectedFile?.id === file.id ? null : file)}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-colors cursor-pointer group ${
+                          selectedFile?.id === file.id
+                            ? 'bg-[#2a2a3e] border-[#6366f1]'
+                            : 'bg-[#1a1a24] hover:bg-[#2a2a3e] border-[#2a2a3e]'
+                        }`}
                       >
                         <svg className="w-4 h-4 text-[#6366f1] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -738,6 +745,25 @@ export function Builder() {
                     ))}
                   </div>
                 </div>
+
+                {/* File content viewer */}
+                {selectedFile && (
+                  <div className="border-t border-[#2a2a3e] p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-mono text-[#6366f1]">{selectedFile.path}</h4>
+                      <button
+                        onClick={() => setSelectedFile(null)}
+                        className="text-xs text-[#555] hover:text-white"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <pre className="bg-[#0a0a0f] p-3 rounded-lg overflow-auto max-h-[300px] text-xs font-mono text-[#f0f0f5] whitespace-pre-wrap">
+                      {selectedFile.content}
+                    </pre>
+                  </div>
+                )}
+                </>
               )}
             </div>
           ) : (

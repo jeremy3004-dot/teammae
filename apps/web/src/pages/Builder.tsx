@@ -208,100 +208,93 @@ export function Builder() {
       .replace(/\s+as\s+\w+/g, '') // Type assertions: as string
       .replace(/:\s*(string|number|boolean|any|void|null|undefined|never)(\[\])?/g, ''); // Simple type annotations
 
-    // Create a simple static HTML preview showing the app structure
-    // This avoids external CDN dependencies that might be blocked
+    // Build live React preview with CDN dependencies
+    // Using unpkg.com which is very reliable
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"><\/script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .preview-container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      overflow: hidden;
-    }
-    .preview-header {
-      background: #1a1a2e;
-      color: white;
-      padding: 16px 20px;
-      font-weight: 600;
-    }
-    .preview-content {
-      padding: 20px;
-    }
-    .file-card {
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      overflow: hidden;
-    }
-    .file-header {
-      background: #e9ecef;
-      padding: 10px 16px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #495057;
-      border-bottom: 1px solid #dee2e6;
-    }
-    .file-content {
-      padding: 16px;
-      font-family: 'Monaco', 'Menlo', monospace;
-      font-size: 12px;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-all;
-      max-height: 300px;
-      overflow-y: auto;
-      background: #282c34;
-      color: #abb2bf;
-    }
-    .success-badge {
-      display: inline-block;
-      background: #28a745;
-      color: white;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      margin-bottom: 16px;
-    }
-    .info-text {
-      color: #6c757d;
-      font-size: 14px;
-      margin-bottom: 16px;
-    }
     ${cssContent.replace(/@tailwind\s+(base|components|utilities);/g, '')}
+    /* Loading state */
+    .mae-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-family: system-ui, sans-serif;
+    }
+    .mae-loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .mae-error {
+      padding: 20px;
+      background: #fee;
+      border: 1px solid #f00;
+      border-radius: 8px;
+      margin: 20px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
-  <div class="preview-container">
-    <div class="preview-header">
-      MAE Preview - Build Successful
-    </div>
-    <div class="preview-content">
-      <span class="success-badge">Build Complete</span>
-      <p class="info-text">Generated ${files.length} file(s). Full React preview requires a build server.</p>
-
-      ${files.map(f => `
-        <div class="file-card">
-          <div class="file-header">${f.path} (${(f.size_bytes / 1024).toFixed(1)} KB)</div>
-          <div class="file-content">${f.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 2000)}${f.content.length > 2000 ? '\n\n... (truncated)' : ''}</div>
-        </div>
-      `).join('')}
+  <div id="root">
+    <div class="mae-loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 16px;">Loading preview...</p>
     </div>
   </div>
+
+  <!-- React 18 UMD builds from unpkg -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
+  <!-- Babel for JSX transformation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+
+  <script type="text/babel" data-presets="react">
+    // Make React hooks available globally
+    const { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext } = React;
+
+    try {
+      // Component code
+      ${componentCode.join('\n\n')}
+
+      // App code
+      ${transformedApp}
+
+      // Render
+      const container = document.getElementById('root');
+      const root = ReactDOM.createRoot(container);
+      root.render(<App />);
+    } catch (err) {
+      console.error('Preview render error:', err);
+      document.getElementById('root').innerHTML = '<div class="mae-error">Error: ' + err.message + '</div>';
+    }
+  <\/script>
+
+  <script>
+    // Fallback timeout - if nothing renders in 5s, show error
+    setTimeout(() => {
+      const root = document.getElementById('root');
+      if (root && root.querySelector('.mae-loading')) {
+        root.innerHTML = '<div class="mae-error">Preview failed to load. Scripts may be blocked or there was a syntax error. Check the Debug tab for details.</div>';
+      }
+    }, 8000);
+  <\/script>
 </body>
 </html>`;
   };

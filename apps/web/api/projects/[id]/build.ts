@@ -39,10 +39,17 @@ export default async function handler(
     }
 
     console.log('[build] Step 3: Creating Supabase client');
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Create client with auth headers for RLS to work on subsequent queries
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
 
     console.log('[build] Step 4: Verifying auth');
-    // Verify auth - pass token directly to getUser
+    // Verify auth - pass token directly to getUser for proper TypeScript types
     const { data: authData, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !authData.user) {

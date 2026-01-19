@@ -123,21 +123,25 @@ export function Builder() {
         const componentName = fileName.replace(/\.(tsx|jsx)$/, '');
 
         // Transform the component to be usable inline
-        const transformed = content
+        let transformed = content
           .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
-          .replace(/export default function\s+\w+/g, `const ${componentName} = function`) // Named function export
-          .replace(/export default /g, `const ${componentName} = `) // Arrow function or other export
+          .replace(/export default function\s+(\w+)/g, 'function $1') // Named function export: keep function name
+          .replace(/export default\s+(\w+);?\s*$/gm, '') // Remove: export default ComponentName;
+          .replace(/export default /g, `const ${componentName} = `) // Arrow function or anonymous: const Name = ...
           .replace(/export /g, '');
-        componentCode.push(`// ${path}\n${transformed}`);
+
+        // Skip empty or invalid transforms
+        if (transformed.trim()) {
+          componentCode.push(`// ${path}\n${transformed}`);
+        }
       }
     }
 
     // Transform App.tsx
     const transformedApp = appContent
       .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
-      .replace(/export default function\s+App/g, 'const App = function') // Handle: export default function App
-      .replace(/export default function\s+\w+/g, 'const App = function') // Handle: export default function SomeName
-      .replace(/export default App;?/g, '') // Handle: export default App;
+      .replace(/export default function\s+(\w+)/g, 'function $1') // Keep named function: function App() or function SomeName()
+      .replace(/export default\s+(\w+);?\s*$/gm, '') // Remove: export default App; (function already declared)
       .replace(/export default /g, 'const App = '); // Handle: export default () => or export default class
 
     return `<!DOCTYPE html>

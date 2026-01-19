@@ -9,8 +9,11 @@ export function PreviewPane({ html }: PreviewPaneProps) {
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [blobUrl, setBlobUrl] = useState<string>('');
+  const [isLoaded, setIsLoaded] = useState(false);
+  const previousUrlRef = useRef<string>('');
 
   const handleRefresh = () => {
+    setIsLoaded(false);
     setIframeKey((prev) => prev + 1);
   };
 
@@ -22,16 +25,43 @@ export function PreviewPane({ html }: PreviewPaneProps) {
       return;
     }
 
+    console.log('[PreviewPane] Creating blob URL, html length:', html.length);
+    console.log('[PreviewPane] HTML preview (first 500 chars):', html.substring(0, 500));
+
     // Create blob from HTML
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    setBlobUrl(url);
+    console.log('[PreviewPane] Created blob URL:', url);
 
-    // Cleanup: revoke the blob URL when component unmounts or html changes
+    // Store previous URL for cleanup
+    if (previousUrlRef.current) {
+      URL.revokeObjectURL(previousUrlRef.current);
+    }
+    previousUrlRef.current = url;
+
+    setBlobUrl(url);
+    setIsLoaded(false);
+
+    // Only cleanup on unmount, not on html change (to prevent race conditions)
     return () => {
-      URL.revokeObjectURL(url);
+      // Delay cleanup to ensure iframe has loaded
+      setTimeout(() => {
+        if (previousUrlRef.current === url) {
+          URL.revokeObjectURL(url);
+          previousUrlRef.current = '';
+        }
+      }, 1000);
     };
   }, [html, iframeKey]);
+
+  const handleIframeLoad = () => {
+    console.log('[PreviewPane] Iframe loaded successfully');
+    setIsLoaded(true);
+  };
+
+  const handleIframeError = () => {
+    console.error('[PreviewPane] Iframe failed to load');
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -74,6 +104,8 @@ export function PreviewPane({ html }: PreviewPaneProps) {
             title="App Preview"
             className="absolute inset-0 w-full h-full border-0"
             src={blobUrl}
+            onLoad={handleIframeLoad}
+            onError={handleIframeError}
           />
         ) : (
           <div className="flex items-center justify-center h-full">

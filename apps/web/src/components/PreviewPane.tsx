@@ -1,63 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 
 interface PreviewPaneProps {
   html: string;
   onError?: (error: string) => void;
 }
 
-export function PreviewPane({ html, onError }: PreviewPaneProps) {
+export function PreviewPane({ html }: PreviewPaneProps) {
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleRefresh = () => {
     setIframeKey((prev) => prev + 1);
   };
-
-  // Inject error capturing script into HTML
-  const htmlWithErrorCapture = html ? html.replace(
-    '</head>',
-    `<script>
-      // Capture errors and send to parent
-      window.onerror = function(message, source, lineno, colno, error) {
-        window.parent.postMessage({
-          type: 'preview-error',
-          error: message + (source ? ' at ' + source + ':' + lineno + ':' + colno : '')
-        }, '*');
-        return false;
-      };
-      // Capture unhandled promise rejections
-      window.onunhandledrejection = function(event) {
-        window.parent.postMessage({
-          type: 'preview-error',
-          error: 'Unhandled Promise: ' + (event.reason?.message || event.reason || 'Unknown')
-        }, '*');
-      };
-      // Capture console errors
-      const originalConsoleError = console.error;
-      console.error = function(...args) {
-        window.parent.postMessage({
-          type: 'preview-error',
-          error: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
-        }, '*');
-        originalConsoleError.apply(console, args);
-      };
-      // Send ready message when scripts load
-      window.addEventListener('DOMContentLoaded', function() {
-        window.parent.postMessage({ type: 'preview-loaded' }, '*');
-      });
-    <\/script></head>`
-  ) : '';
-
-  // Listen for messages from iframe
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'preview-error' && onError) {
-        onError(event.data.error);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [onError]);
 
   return (
     <div className="h-full flex flex-col">
@@ -99,7 +53,7 @@ export function PreviewPane({ html, onError }: PreviewPaneProps) {
             ref={iframeRef}
             title="App Preview"
             className="absolute inset-0 w-full h-full border-0"
-            srcDoc={htmlWithErrorCapture}
+            srcDoc={html}
           />
         )}
       </div>

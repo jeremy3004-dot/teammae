@@ -21,7 +21,17 @@ interface BuildStep {
   status: 'pending' | 'active' | 'complete';
 }
 
-type RightPaneTab = 'preview' | 'files';
+type RightPaneTab = 'preview' | 'files' | 'debug';
+
+interface DebugInfo {
+  timestamp: string;
+  projectId: string | null;
+  buildId: string | null;
+  fileCount: number;
+  lastError: string | null;
+  previewStatus: string;
+  logs: BuildLog[];
+}
 
 export function Builder() {
   const location = useLocation();
@@ -38,6 +48,8 @@ export function Builder() {
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [rightPaneTab, setRightPaneTab] = useState<RightPaneTab>('preview');
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -259,6 +271,63 @@ export function Builder() {
 
   const addLog = (level: BuildLog['level'], message: string) => {
     setLogs((prev) => [...prev, { level, message, timestamp: new Date() }]);
+    if (level === 'error') {
+      setLastError(message);
+    }
+  };
+
+  // Generate debug info object
+  const getDebugInfo = (): DebugInfo => ({
+    timestamp: new Date().toISOString(),
+    projectId: currentProjectId,
+    buildId: _currentBuildId,
+    fileCount: projectFiles.length,
+    lastError,
+    previewStatus: previewHtml ? `Generated (${previewHtml.length} chars)` : 'Not generated',
+    logs,
+  });
+
+  // Copy helper with feedback
+  const copyToClipboard = async (text: string, section: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedSection(section);
+      setTimeout(() => setCopiedSection(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  // Format debug info for copying
+  const formatDebugReport = (): string => {
+    const info = getDebugInfo();
+    const errorLogs = logs.filter(l => l.level === 'error');
+    const warnLogs = logs.filter(l => l.level === 'warn');
+
+    return `=== MAE Debug Report ===
+Generated: ${info.timestamp}
+
+--- Project Info ---
+Project ID: ${info.projectId || 'None'}
+Build ID: ${info.buildId || 'None'}
+File Count: ${info.fileCount}
+Preview Status: ${info.previewStatus}
+
+--- Last Error ---
+${info.lastError || 'No errors'}
+
+--- Error Logs (${errorLogs.length}) ---
+${errorLogs.map(l => `[${l.timestamp.toISOString()}] ${l.message}`).join('\n') || 'None'}
+
+--- Warning Logs (${warnLogs.length}) ---
+${warnLogs.map(l => `[${l.timestamp.toISOString()}] ${l.message}`).join('\n') || 'None'}
+
+--- All Logs (${logs.length}) ---
+${logs.map(l => `[${l.level.toUpperCase()}] [${l.timestamp.toISOString()}] ${l.message}`).join('\n') || 'None'}
+
+--- Files ---
+${projectFiles.map(f => `${f.path} (${f.size_bytes} bytes)`).join('\n') || 'No files'}
+`;
   };
 
   const startBuildPolling = (buildId: string, projectId: string) => {
@@ -648,6 +717,20 @@ export function Builder() {
           >
             Preview
           </button>
+          <button
+            onClick={() => setRightPaneTab('debug')}
+            className={`flex-1 px-4 py-3 text-sm font-mono font-medium transition-colors ${
+              rightPaneTab === 'debug'
+                ? 'text-[#f0f0f5] border-b-2 border-[#6366f1] bg-[#12121a]'
+                : 'text-[#666] hover:text-[#a0a0b0] bg-[#0a0a0f]'
+            }`}
+          >
+            Debug {logs.filter(l => l.level === 'error').length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                {logs.filter(l => l.level === 'error').length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -766,7 +849,7 @@ export function Builder() {
                 </>
               )}
             </div>
-          ) : (
+          ) : rightPaneTab === 'preview' ? (
             // Preview Tab
             <div className="h-full">
               {previewHtml ? (
@@ -783,6 +866,186 @@ export function Builder() {
                     Preview functionality coming soon. For now, check the Files tab to see generated code.
                   </p>
                 </div>
+              )}
+            </div>
+          ) : (
+            // Debug Tab
+            <div className="h-full overflow-y-auto p-4">
+              {/* Copy All Button */}
+              <div className="mb-4">
+                <button
+                  onClick={() => copyToClipboard(formatDebugReport(), 'all')}
+                  className="w-full px-4 py-3 bg-[#6366f1] hover:bg-[#5558e3] text-white rounded-lg font-mono font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  {copiedSection === 'all' ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy Full Debug Report
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Project Info Section */}
+              <div className="mb-4 bg-[#1a1a24] border border-[#2a2a3e] rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-[#0a0a0f] border-b border-[#2a2a3e]">
+                  <span className="text-xs font-mono font-semibold text-[#6366f1] uppercase">Project Info</span>
+                  <button
+                    onClick={() => copyToClipboard(`Project ID: ${currentProjectId || 'None'}\nBuild ID: ${_currentBuildId || 'None'}\nFiles: ${projectFiles.length}`, 'project')}
+                    className="text-xs text-[#555] hover:text-white transition-colors"
+                  >
+                    {copiedSection === 'project' ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div className="p-3 space-y-2 text-sm font-mono">
+                  <div className="flex justify-between">
+                    <span className="text-[#666]">Project ID:</span>
+                    <span className="text-[#f0f0f5]">{currentProjectId || 'None'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#666]">Build ID:</span>
+                    <span className="text-[#f0f0f5]">{_currentBuildId || 'None'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#666]">Files:</span>
+                    <span className="text-[#f0f0f5]">{projectFiles.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#666]">Preview:</span>
+                    <span className={previewHtml ? 'text-green-400' : 'text-[#555]'}>
+                      {previewHtml ? `Generated (${previewHtml.length} chars)` : 'Not generated'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#666]">Status:</span>
+                    <span className={isBuilding ? 'text-yellow-400' : 'text-green-400'}>
+                      {isBuilding ? 'Building...' : 'Idle'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Last Error Section */}
+              {lastError && (
+                <div className="mb-4 bg-[#1a1a24] border border-red-500/30 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between px-3 py-2 bg-red-500/10 border-b border-red-500/30">
+                    <span className="text-xs font-mono font-semibold text-red-400 uppercase">Last Error</span>
+                    <button
+                      onClick={() => copyToClipboard(lastError, 'error')}
+                      className="text-xs text-[#555] hover:text-white transition-colors"
+                    >
+                      {copiedSection === 'error' ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  <pre className="p-3 text-sm font-mono text-red-400 whitespace-pre-wrap break-all">
+                    {lastError}
+                  </pre>
+                </div>
+              )}
+
+              {/* Build Logs Section */}
+              <div className="mb-4 bg-[#1a1a24] border border-[#2a2a3e] rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-[#0a0a0f] border-b border-[#2a2a3e]">
+                  <span className="text-xs font-mono font-semibold text-[#6366f1] uppercase">
+                    Build Logs ({logs.length})
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setLogs([])}
+                      className="text-xs text-[#555] hover:text-white transition-colors"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(logs.map(l => `[${l.level.toUpperCase()}] ${l.message}`).join('\n'), 'logs')}
+                      className="text-xs text-[#555] hover:text-white transition-colors"
+                    >
+                      {copiedSection === 'logs' ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                  {logs.length === 0 ? (
+                    <div className="p-3 text-sm text-[#555] font-mono">No logs yet</div>
+                  ) : (
+                    <div className="divide-y divide-[#2a2a3e]">
+                      {logs.map((log, idx) => (
+                        <div key={idx} className="px-3 py-2 text-xs font-mono flex gap-2">
+                          <span className={`shrink-0 uppercase font-semibold ${
+                            log.level === 'error' ? 'text-red-400' :
+                            log.level === 'warn' ? 'text-yellow-400' :
+                            log.level === 'info' ? 'text-blue-400' :
+                            'text-[#666]'
+                          }`}>
+                            [{log.level}]
+                          </span>
+                          <span className="text-[#a0a0b0] break-all">{log.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Files Summary Section */}
+              <div className="mb-4 bg-[#1a1a24] border border-[#2a2a3e] rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-[#0a0a0f] border-b border-[#2a2a3e]">
+                  <span className="text-xs font-mono font-semibold text-[#6366f1] uppercase">
+                    Files ({projectFiles.length})
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(projectFiles.map(f => `${f.path} (${f.size_bytes} bytes)`).join('\n'), 'files')}
+                    className="text-xs text-[#555] hover:text-white transition-colors"
+                  >
+                    {copiedSection === 'files' ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div className="max-h-[200px] overflow-y-auto">
+                  {projectFiles.length === 0 ? (
+                    <div className="p-3 text-sm text-[#555] font-mono">No files generated</div>
+                  ) : (
+                    <div className="divide-y divide-[#2a2a3e]">
+                      {projectFiles.map((file) => (
+                        <div key={file.id} className="px-3 py-2 text-xs font-mono flex justify-between">
+                          <span className="text-[#f0f0f5]">{file.path}</span>
+                          <span className="text-[#555]">{(file.size_bytes / 1024).toFixed(1)} KB</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Raw Preview HTML Section (collapsed by default) */}
+              {previewHtml && (
+                <details className="mb-4 bg-[#1a1a24] border border-[#2a2a3e] rounded-lg overflow-hidden">
+                  <summary className="flex items-center justify-between px-3 py-2 bg-[#0a0a0f] border-b border-[#2a2a3e] cursor-pointer hover:bg-[#12121a]">
+                    <span className="text-xs font-mono font-semibold text-[#6366f1] uppercase">
+                      Preview HTML ({previewHtml.length} chars)
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        copyToClipboard(previewHtml, 'html');
+                      }}
+                      className="text-xs text-[#555] hover:text-white transition-colors"
+                    >
+                      {copiedSection === 'html' ? 'Copied!' : 'Copy'}
+                    </button>
+                  </summary>
+                  <pre className="p-3 text-xs font-mono text-[#a0a0b0] whitespace-pre-wrap break-all max-h-[300px] overflow-y-auto">
+                    {previewHtml}
+                  </pre>
+                </details>
               )}
             </div>
           )}

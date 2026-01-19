@@ -152,7 +152,14 @@ export function Builder() {
           // Handle: export const/let/var/function
           .replace(/^export\s+(const|let|var|function)\s+/gm, '$1 ')
           // Remove any leftover 'export' at start of line
-          .replace(/^export\s+/gm, '');
+          .replace(/^export\s+/gm, '')
+          // Remove TypeScript type annotations
+          .replace(/:\s*React\.\w+(<[^>]*>)?/g, '') // : React.FC<Props>
+          .replace(/:\s*\w+\[\]/g, '') // : string[]
+          .replace(/:\s*\w+\s*\|[^=,)}\n]+/g, '') // : string | null
+          .replace(/<[A-Z]\w*>/g, '') // Generic types like <Props>, <T>
+          .replace(/\s+as\s+\w+/g, '') // Type assertions: as string
+          .replace(/:\s*(string|number|boolean|any|void|null|undefined|never)(\[\])?/g, ''); // Simple type annotations
 
         // Skip empty or invalid transforms
         if (transformed.trim()) {
@@ -178,7 +185,14 @@ export function Builder() {
       // Handle: export const/let/var/function
       .replace(/^export\s+(const|let|var|function)\s+/gm, '$1 ')
       // Remove any leftover 'export' at start of line
-      .replace(/^export\s+/gm, '');
+      .replace(/^export\s+/gm, '')
+      // Remove TypeScript type annotations
+      .replace(/:\s*React\.\w+(<[^>]*>)?/g, '') // : React.FC<Props>
+      .replace(/:\s*\w+\[\]/g, '') // : string[]
+      .replace(/:\s*\w+\s*\|[^=,)}\n]+/g, '') // : string | null
+      .replace(/<[A-Z]\w*>/g, '') // Generic types like <Props>, <T>
+      .replace(/\s+as\s+\w+/g, '') // Type assertions: as string
+      .replace(/:\s*(string|number|boolean|any|void|null|undefined|never)(\[\])?/g, ''); // Simple type annotations
 
     return `<!DOCTYPE html>
 <html lang="en">

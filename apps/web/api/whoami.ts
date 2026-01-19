@@ -26,16 +26,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    });
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Verify token with Supabase
-    const { data, error } = await supabase.auth.getUser();
+    // Verify token with Supabase - pass token directly to getUser
+    const { data, error } = await supabase.auth.getUser(token);
 
     if (error || !data.user) {
       return res.status(401).json({

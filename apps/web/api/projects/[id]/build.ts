@@ -39,17 +39,11 @@ export default async function handler(
     }
 
     console.log('[build] Step 3: Creating Supabase client');
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    });
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     console.log('[build] Step 4: Verifying auth');
-    // Verify auth
-    const { data: authData, error: authError } = await supabase.auth.getUser();
+    // Verify auth - pass token directly to getUser
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !authData.user) {
       return res.status(401).json({ error: 'Invalid or expired token' });

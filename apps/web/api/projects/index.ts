@@ -20,16 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Missing Supabase configuration' });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    });
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Verify auth
-    const { data: authData, error: authError } = await supabase.auth.getUser();
+    // Verify auth - pass token directly to getUser
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !authData.user) {
       return res.status(401).json({ error: 'Invalid or expired token' });

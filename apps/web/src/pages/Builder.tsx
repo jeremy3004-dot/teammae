@@ -122,13 +122,24 @@ export function Builder() {
         const fileName = path.split('/').pop() || '';
         const componentName = fileName.replace(/\.(tsx|jsx)$/, '');
 
-        // Transform the component to be usable inline
+        // Transform the component to be usable inline (convert TSX to JSX)
         let transformed = content
-          .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
-          .replace(/export default function\s+(\w+)/g, 'function $1') // Named function export: keep function name
-          .replace(/export default\s+(\w+);?\s*$/gm, '') // Remove: export default ComponentName;
-          .replace(/export default /g, `const ${componentName} = `) // Arrow function or anonymous: const Name = ...
-          .replace(/export /g, '');
+          // Remove imports
+          .replace(/^import\s+.*$/gm, '')
+          // Remove type/interface declarations (including multiline)
+          .replace(/^(export\s+)?(type|interface)\s+\w+[\s\S]*?(?=\n\n|\nexport|\nfunction|\nconst|\n\/\/|$)/gm, '')
+          // Remove named exports like: export { Foo, Bar };
+          .replace(/^export\s*\{[^}]*\}\s*;?\s*$/gm, '')
+          // Handle: export default function Name -> function Name
+          .replace(/export\s+default\s+function\s+(\w+)/g, 'function $1')
+          // Handle: export default Name; (where Name is already declared)
+          .replace(/^export\s+default\s+\w+\s*;?\s*$/gm, '')
+          // Handle: export default () => or export default class
+          .replace(/export\s+default\s+/g, `const ${componentName} = `)
+          // Handle: export const/let/var/function
+          .replace(/^export\s+(const|let|var|function)\s+/gm, '$1 ')
+          // Remove any leftover 'export' at start of line
+          .replace(/^export\s+/gm, '');
 
         // Skip empty or invalid transforms
         if (transformed.trim()) {
@@ -139,10 +150,22 @@ export function Builder() {
 
     // Transform App.tsx
     const transformedApp = appContent
-      .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
-      .replace(/export default function\s+(\w+)/g, 'function $1') // Keep named function: function App() or function SomeName()
-      .replace(/export default\s+(\w+);?\s*$/gm, '') // Remove: export default App; (function already declared)
-      .replace(/export default /g, 'const App = '); // Handle: export default () => or export default class
+      // Remove imports
+      .replace(/^import\s+.*$/gm, '')
+      // Remove type/interface declarations (including multiline)
+      .replace(/^(export\s+)?(type|interface)\s+\w+[\s\S]*?(?=\n\n|\nexport|\nfunction|\nconst|\n\/\/|$)/gm, '')
+      // Remove named exports like: export { Foo, Bar };
+      .replace(/^export\s*\{[^}]*\}\s*;?\s*$/gm, '')
+      // Handle: export default function Name -> function Name
+      .replace(/export\s+default\s+function\s+(\w+)/g, 'function $1')
+      // Handle: export default Name; (where Name is already declared)
+      .replace(/^export\s+default\s+\w+\s*;?\s*$/gm, '')
+      // Handle: export default () => or export default class
+      .replace(/export\s+default\s+/g, 'const App = ')
+      // Handle: export const/let/var/function
+      .replace(/^export\s+(const|let|var|function)\s+/gm, '$1 ')
+      // Remove any leftover 'export' at start of line
+      .replace(/^export\s+/gm, '');
 
     return `<!DOCTYPE html>
 <html lang="en">

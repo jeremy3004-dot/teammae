@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 
 interface PreviewPaneProps {
   html: string;
@@ -12,6 +12,15 @@ export function PreviewPane({ html }: PreviewPaneProps) {
   const handleRefresh = () => {
     setIframeKey((prev) => prev + 1);
   };
+
+  // Convert HTML to data URI for better browser compatibility
+  // This avoids srcDoc issues with escaping and CSP
+  const dataUri = useMemo(() => {
+    if (!html) return '';
+    // Encode the HTML as a data URI
+    const encoded = encodeURIComponent(html);
+    return `data:text/html;charset=utf-8,${encoded}`;
+  }, [html]);
 
   return (
     <div className="h-full flex flex-col">
@@ -53,7 +62,7 @@ export function PreviewPane({ html }: PreviewPaneProps) {
             ref={iframeRef}
             title="App Preview"
             className="absolute inset-0 w-full h-full border-0"
-            srcDoc={html}
+            src={dataUri}
           />
         )}
       </div>

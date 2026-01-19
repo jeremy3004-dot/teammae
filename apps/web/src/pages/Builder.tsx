@@ -118,10 +118,15 @@ export function Builder() {
     for (const [path, content] of fileMap.entries()) {
       if ((path.includes('/components/') || path.includes('/pages/')) &&
           (path.endsWith('.tsx') || path.endsWith('.jsx'))) {
+        // Extract component name from file path (e.g., 'src/pages/HomePage.tsx' -> 'HomePage')
+        const fileName = path.split('/').pop() || '';
+        const componentName = fileName.replace(/\.(tsx|jsx)$/, '');
+
         // Transform the component to be usable inline
         const transformed = content
           .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
-          .replace(/export default /g, 'const _Component = ')
+          .replace(/export default function\s+\w+/g, `const ${componentName} = function`) // Named function export
+          .replace(/export default /g, `const ${componentName} = `) // Arrow function or other export
           .replace(/export /g, '');
         componentCode.push(`// ${path}\n${transformed}`);
       }
@@ -130,8 +135,10 @@ export function Builder() {
     // Transform App.tsx
     const transformedApp = appContent
       .replace(/^import.*from.*['"].*['"];?\s*$/gm, '') // Remove imports
-      .replace(/export default App;?/g, '')
-      .replace(/export default /g, 'const App = ');
+      .replace(/export default function\s+App/g, 'const App = function') // Handle: export default function App
+      .replace(/export default function\s+\w+/g, 'const App = function') // Handle: export default function SomeName
+      .replace(/export default App;?/g, '') // Handle: export default App;
+      .replace(/export default /g, 'const App = '); // Handle: export default () => or export default class
 
     return `<!DOCTYPE html>
 <html lang="en">

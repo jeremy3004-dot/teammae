@@ -102,16 +102,29 @@ export function Builder() {
   const generatePreviewHtml = (files: ProjectFile[]): string => {
     const fileMap = new Map(files.map(f => [f.path, f.content]));
 
-    // Find App.tsx or main component
-    const appContent = fileMap.get('apps/web/src/App.tsx') ||
-                       fileMap.get('src/App.tsx') ||
-                       fileMap.get('App.tsx') || '';
+    console.log('[Preview] Available files:', Array.from(fileMap.keys()));
 
-    // Find CSS
-    const cssContent = fileMap.get('apps/web/src/index.css') ||
-                       fileMap.get('src/index.css') ||
-                       fileMap.get('index.css') ||
-                       '@tailwind base;\n@tailwind components;\n@tailwind utilities;';
+    // Find App.tsx or main component - check multiple patterns
+    let appContent = '';
+    let appPath = '';
+    for (const [path, content] of fileMap.entries()) {
+      if (path.endsWith('App.tsx') || path.endsWith('App.jsx')) {
+        appContent = content;
+        appPath = path;
+        break;
+      }
+    }
+    console.log('[Preview] Found App at:', appPath || 'NOT FOUND');
+
+    // Find CSS - check multiple patterns
+    let cssContent = '@tailwind base;\n@tailwind components;\n@tailwind utilities;';
+    for (const [path, content] of fileMap.entries()) {
+      if (path.endsWith('.css')) {
+        cssContent = content;
+        console.log('[Preview] Found CSS at:', path);
+        break;
+      }
+    }
 
     // Collect all component files
     const componentCode: string[] = [];
@@ -209,12 +222,19 @@ export function Builder() {
     // App component
     ${transformedApp}
 
+    // Debug: log what we have
+    console.log('Component code loaded:', ${componentCode.length});
+    console.log('App defined:', typeof App);
+
     // Render
     try {
+      if (typeof App === 'undefined') {
+        throw new Error('App component is not defined. Check file paths.');
+      }
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(React.createElement(App));
     } catch (e) {
-      document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red;">Preview Error: ' + e.message + '</div>';
+      document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;"><strong>Preview Error:</strong><br/>' + e.message + '<br/><br/><small>Check browser console for details</small></div>';
       console.error('Preview render error:', e);
     }
   </script>

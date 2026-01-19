@@ -75,8 +75,11 @@ export function LivePreviewPane({ files }: LivePreviewPaneProps) {
 @tailwind utilities;`;
   }
 
+  // Log files being passed to Sandpack for debugging
+  console.log('[LivePreviewPane] Files:', Object.keys(sandpackFiles));
+
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full bg-[#1a1a2e]">
       <Sandpack
         template="react"
         theme="dark"

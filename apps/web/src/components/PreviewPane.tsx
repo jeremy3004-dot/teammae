@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface PreviewPaneProps {
   html: string;
@@ -8,19 +8,30 @@ interface PreviewPaneProps {
 export function PreviewPane({ html }: PreviewPaneProps) {
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [blobUrl, setBlobUrl] = useState<string>('');
 
   const handleRefresh = () => {
     setIframeKey((prev) => prev + 1);
   };
 
-  // Convert HTML to data URI for better browser compatibility
-  // This avoids srcDoc issues with escaping and CSP
-  const dataUri = useMemo(() => {
-    if (!html) return '';
-    // Encode the HTML as a data URI
-    const encoded = encodeURIComponent(html);
-    return `data:text/html;charset=utf-8,${encoded}`;
-  }, [html]);
+  // Use Blob URL instead of data URI or srcDoc
+  // Blob URLs have better browser support and no length limits
+  useEffect(() => {
+    if (!html) {
+      setBlobUrl('');
+      return;
+    }
+
+    // Create blob from HTML
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    setBlobUrl(url);
+
+    // Cleanup: revoke the blob URL when component unmounts or html changes
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [html, iframeKey]);
 
   return (
     <div className="h-full flex flex-col">
@@ -56,14 +67,18 @@ export function PreviewPane({ html }: PreviewPaneProps) {
               <p className="text-xs text-gray-400 mt-1">Start building to see your app</p>
             </div>
           </div>
-        ) : (
+        ) : blobUrl ? (
           <iframe
             key={iframeKey}
             ref={iframeRef}
             title="App Preview"
             className="absolute inset-0 w-full h-full border-0"
-            src={dataUri}
+            src={blobUrl}
           />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full"></div>
+          </div>
         )}
       </div>
     </div>

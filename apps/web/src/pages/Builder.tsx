@@ -208,66 +208,100 @@ export function Builder() {
       .replace(/\s+as\s+\w+/g, '') // Type assertions: as string
       .replace(/:\s*(string|number|boolean|any|void|null|undefined|never)(\[\])?/g, ''); // Simple type annotations
 
+    // Create a simple static HTML preview showing the app structure
+    // This avoids external CDN dependencies that might be blocked
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Preview</title>
-  <script src="https://cdn.tailwindcss.com"><\/script>
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin><\/script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin><\/script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            background: '#0a0a0f',
-            foreground: '#f0f0f5',
-            card: '#12121a',
-            border: '#2a2a3e',
-            primary: '#6366f1',
-            'primary-foreground': '#ffffff',
-            muted: '#1a1a24',
-            'muted-foreground': '#a0a0b0',
-          }
-        }
-      }
-    }
-  <\/script>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .preview-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    .preview-header {
+      background: #1a1a2e;
+      color: white;
+      padding: 16px 20px;
+      font-weight: 600;
+    }
+    .preview-content {
+      padding: 20px;
+    }
+    .file-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .file-header {
+      background: #e9ecef;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #495057;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .file-content {
+      padding: 16px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+      background: #282c34;
+      color: #abb2bf;
+    }
+    .success-badge {
+      display: inline-block;
+      background: #28a745;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    .info-text {
+      color: #6c757d;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
     ${cssContent.replace(/@tailwind\s+(base|components|utilities);/g, '')}
-    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+  <div class="preview-container">
+    <div class="preview-header">
+      MAE Preview - Build Successful
+    </div>
+    <div class="preview-content">
+      <span class="success-badge">Build Complete</span>
+      <p class="info-text">Generated ${files.length} file(s). Full React preview requires a build server.</p>
 
-    // Component definitions
-    ${componentCode.join('\n\n')}
-
-    // App component
-    ${transformedApp}
-
-    // Debug: log what we have
-    console.log('Component code loaded:', ${componentCode.length});
-    console.log('App defined:', typeof App);
-
-    // Render
-    try {
-      if (typeof App === 'undefined') {
-        throw new Error('App component is not defined. Check file paths.');
-      }
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(<App />);
-    } catch (e) {
-      document.getElementById('root').innerHTML = '<div style="padding: 20px; color: red; font-family: monospace;"><strong>Preview Error:</strong><br/>' + e.message + '<br/><br/><small>Check browser console for details</small></div>';
-      console.error('Preview render error:', e);
-    }
-  <\/script>
+      ${files.map(f => `
+        <div class="file-card">
+          <div class="file-header">${f.path} (${(f.size_bytes / 1024).toFixed(1)} KB)</div>
+          <div class="file-content">${f.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 2000)}${f.content.length > 2000 ? '\n\n... (truncated)' : ''}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
 </body>
 </html>`;
   };
